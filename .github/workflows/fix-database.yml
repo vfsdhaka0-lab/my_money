@@ -1,0 +1,101 @@
+
+name: Fix MyMoney Database
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-database:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Repair database file
+        run: |
+          cat > lib/core/database/app_database.dart <<'EOF'
+          import 'dart:io';
+
+          import 'package:drift/drift.dart';
+          import 'package:drift/native.dart';
+          import 'package:path/path.dart' as p;
+          import 'package:path_provider/path_provider.dart';
+
+          import 'tables/accounts.dart';
+          import 'tables/categories.dart';
+          import 'tables/transactions.dart';
+
+          part 'app_database.g.dart';
+
+          @DriftDatabase(
+            tables: [
+              Accounts,
+              Categories,
+              Transactions,
+            ],
+          )
+          class AppDatabase extends _$AppDatabase {
+            AppDatabase() : super(_openConnection());
+
+            @override
+            int get schemaVersion => 1;
+
+            Stream<List<Account>> watchAccounts() {
+              return select(accounts).watch();
+            }
+
+            Future<int> addAccount({
+              required String name,
+              required int openingBalancePaisa,
+            }) {
+              return into(accounts).insert(
+                AccountsCompanion.insert(
+                  name: name,
+                  openingBalancePaisa: Value(openingBalancePaisa),
+                ),
+              );
+            }
+          }
+
+          LazyDatabase _openConnection() {
+            return LazyDatabase(() async {
+              final directory =
+                  await getApplicationDocumentsDirectory();
+
+              final file = File(
+                p.join(directory.path, 'my_money.sqlite'),
+              );
+
+              return NativeDatabase.createInBackground(file);
+            });
+          }
+          EOF
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate Drift code
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze project
+        run: flutter analyze
+
+      - name: Commit repaired files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib
+          if ! git diff --cached --quiet; then
+            git commit -m "Fix Drift database generation"
+            git push
+          fi
