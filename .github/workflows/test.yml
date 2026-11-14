@@ -1,5 +1,5 @@
 
-name: Build MyMoney Release APK
+name: Build MyMoney APK
 
 on:
   workflow_dispatch:
