@@ -1,3 +1,4 @@
+
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -24,6 +25,8 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
+  // ACCOUNTS
+
   Stream<List<Account>> watchAccounts() {
     return select(accounts).watch();
   }
@@ -36,6 +39,36 @@ class AppDatabase extends _$AppDatabase {
       AccountsCompanion.insert(
         name: name,
         openingBalancePaisa: Value(openingBalancePaisa),
+      ),
+    );
+  }
+
+  // TRANSACTIONS
+
+  Stream<List<Transaction>> watchTransactions() {
+    return (select(transactions)
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.date),
+          ]))
+        .watch();
+  }
+
+  Future<int> addTransaction({
+    required int accountId,
+    required String title,
+    required int amountPaisa,
+    required String type,
+    required DateTime date,
+    String? note,
+  }) {
+    return into(transactions).insert(
+      TransactionsCompanion.insert(
+        accountId: accountId,
+        title: title,
+        amountPaisa: amountPaisa,
+        type: type,
+        date: date,
+        note: Value(note),
       ),
     );
   }
