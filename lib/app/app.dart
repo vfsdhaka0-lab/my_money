@@ -1,4 +1,4 @@
-
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import '../features/accounts/accounts_page.dart';
 import '../features/transactions/transactions_page.dart';
