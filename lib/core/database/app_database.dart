@@ -23,6 +23,22 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   int get schemaVersion => 1;
+
+  Stream<List<Account>> watchAccounts() {
+    return select(accounts).watch();
+  }
+
+  Future<int> addAccount({
+    required String name,
+    required int openingBalancePaisa,
+  }) {
+    return into(accounts).insert(
+      AccountsCompanion.insert(
+        name: name,
+        openingBalancePaisa: Value(openingBalancePaisa),
+      ),
+    );
+  }
 }
 
 LazyDatabase _openConnection() {
