@@ -59,6 +59,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   // ACCOUNTS
+
   Stream<List<Account>> watchAccounts() {
     return select(accounts).watch();
   }
@@ -76,6 +77,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // CATEGORIES
+
   Stream<List<Category>> watchCategories({
     required String type,
   }) {
@@ -105,6 +107,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // TRANSACTIONS
+
   Stream<List<Transaction>> watchTransactions() {
     return (select(transactions)
           ..orderBy([
@@ -134,7 +137,55 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  // ADD PURCHASE WITH PARTIAL OR FULL DUE
+
+  Future<int> addPurchaseWithDue({
+    required int accountId,
+    required String title,
+    required int totalAmountPaisa,
+    required int paidAmountPaisa,
+    required String storeName,
+    required DateTime date,
+    String? note,
+  }) async {
+    if (totalAmountPaisa <= 0 ||
+        paidAmountPaisa < 0 ||
+        paidAmountPaisa > totalAmountPaisa ||
+        storeName.trim().isEmpty) {
+      throw ArgumentError('Invalid purchase information.');
+    }
+
+    return transaction(() async {
+      final transactionId = await into(transactions).insert(
+        TransactionsCompanion.insert(
+          accountId: accountId,
+          title: title,
+          amountPaisa: totalAmountPaisa,
+          paidAmountPaisa: Value(paidAmountPaisa),
+          type: 'expense',
+          date: date,
+          note: Value(note),
+        ),
+      );
+
+      // Create a due record only when money remains unpaid.
+      if (paidAmountPaisa < totalAmountPaisa) {
+        await into(dues).insert(
+          DuesCompanion.insert(
+            storeName: storeName.trim(),
+            transactionId: transactionId,
+            initialPaidPaisa: paidAmountPaisa,
+            note: Value(note),
+          ),
+        );
+      }
+
+      return transactionId;
+    });
+  }
+
   // DUES
+
   Stream<List<Due>> watchDues() {
     return (select(dues)
           ..orderBy([
@@ -143,7 +194,41 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  // CALCULATE OUTSTANDING AMOUNT FOR A DUE
+
+  Future<int> getOutstandingDue(int dueId) async {
+    final due = await (select(dues)
+          ..where((d) => d.id.equals(dueId)))
+        .getSingleOrNull();
+
+    if (due == null) {
+      throw StateError('Due record not found.');
+    }
+
+    final purchase = await (select(transactions)
+          ..where((t) => t.id.equals(due.transactionId)))
+        .getSingleOrNull();
+
+    if (purchase == null) {
+      throw StateError('Purchase transaction not found.');
+    }
+
+    final payments = await (select(duePayments)
+          ..where((p) => p.dueId.equals(dueId)))
+        .get();
+
+    final totalPayments = payments.fold<int>(
+      0,
+      (total, payment) => total + payment.amountPaisa,
+    );
+
+    return purchase.amountPaisa -
+        due.initialPaidPaisa -
+        totalPayments;
+  }
+
   // DUE PAYMENTS
+
   Stream<List<DuePayment>> watchDuePayments(int dueId) {
     return (select(duePayments)
           ..where((p) => p.dueId.equals(dueId))
@@ -152,9 +237,87 @@ class AppDatabase extends _$AppDatabase {
           ]))
         .watch();
   }
+
+  Stream<List<DuePayment>> watchAllDuePayments() {
+    return (select(duePayments)
+          ..orderBy([
+            (p) => OrderingTerm.desc(p.date),
+          ]))
+        .watch();
+  }
+
+  // ADD PAYMENT TOWARDS AN EXISTING DUE
+
+  Future<void> addDuePayment({
+    required int dueId,
+    required int accountId,
+    required int amountPaisa,
+    required DateTime date,
+    String? note,
+  }) async {
+    if (amountPaisa <= 0) {
+      throw ArgumentError('Payment must be greater than zero.');
+    }
+
+    await transaction(() async {
+      final due = await (select(dues)
+            ..where((d) => d.id.equals(dueId)))
+          .getSingleOrNull();
+
+      if (due == null) {
+        throw StateError('Due record not found.');
+      }
+
+      final purchase = await (select(transactions)
+            ..where((t) => t.id.equals(due.transactionId)))
+          .getSingleOrNull();
+
+      if (purchase == null) {
+        throw StateError('Purchase transaction not found.');
+      }
+
+      final previousPayments = await (select(duePayments)
+            ..where((p) => p.dueId.equals(dueId)))
+          .get();
+
+      final alreadyPaid = previousPayments.fold<int>(
+        0,
+        (total, payment) => total + payment.amountPaisa,
+      );
+
+      final outstanding = purchase.amountPaisa -
+          due.initialPaidPaisa -
+          alreadyPaid;
+
+      if (amountPaisa > outstanding) {
+        throw StateError(
+          'Payment exceeds the outstanding due.',
+        );
+      }
+
+      final account = await (select(accounts)
+            ..where((a) => a.id.equals(accountId)))
+          .getSingleOrNull();
+
+      if (account == null) {
+        throw StateError('Account not found.');
+      }
+
+      await into(duePayments).insert(
+        DuePaymentsCompanion.insert(
+          dueId: dueId,
+          accountId: accountId,
+          amountPaisa: amountPaisa,
+          date: date,
+          note: Value(note),
+        ),
+      );
+    });
+  }
 }
 
 // DATABASE CONNECTION
+
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final directory =
