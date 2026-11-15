@@ -57,6 +57,36 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  // CATEGORIES
+
+  Stream<List<Category>> watchCategories({
+    required String type,
+  }) {
+    return (select(categories)
+          ..where((c) => c.type.equals(type))
+          ..where((c) => c.isActive.equals(true))
+          ..orderBy([
+            (c) => OrderingTerm.asc(c.name),
+          ]))
+        .watch();
+  }
+
+  Future<int> addCategory({
+    required String name,
+    required String type,
+    required String icon,
+    required String color,
+  }) {
+    return into(categories).insert(
+      CategoriesCompanion.insert(
+        name: name,
+        type: type,
+        icon: Value(icon),
+        color: Value(color),
+      ),
+    );
+  }
+
   // TRANSACTIONS
 
   Stream<List<Transaction>> watchTransactions() {
