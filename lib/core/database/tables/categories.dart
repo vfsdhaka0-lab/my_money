@@ -1,3 +1,4 @@
+
 import 'package:drift/drift.dart';
 
 class Categories extends Table {
@@ -9,6 +10,9 @@ class Categories extends Table {
 
   TextColumn get icon =>
       text().withDefault(const Constant('category'))();
+
+  TextColumn get color =>
+      text().withDefault(const Constant('#4FA38D'))();
 
   BoolColumn get isActive =>
       boolean().withDefault(const Constant(true))();
