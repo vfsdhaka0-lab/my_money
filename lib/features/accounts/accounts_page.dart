@@ -108,8 +108,9 @@ class AccountsPage extends StatelessWidget {
   int accountBalance(
     Account account,
     List<Transaction> transactions,
+    List<DuePayment> duePayments,
   ) {
-    return transactions
+    final transactionBalance = transactions
         .where((t) => t.accountId == account.id)
         .fold<int>(
       account.openingBalancePaisa,
@@ -119,12 +120,21 @@ class AccountsPage extends StatelessWidget {
         }
 
         if (transaction.type == 'expense') {
-          return total - transaction.amountPaisa;
+          return total - transaction.paidAmountPaisa;
         }
 
         return total;
       },
     );
+
+    final totalDuePayments = duePayments
+        .where((payment) => payment.accountId == account.id)
+        .fold<int>(
+      0,
+      (total, payment) => total + payment.amountPaisa,
+    );
+
+    return transactionBalance - totalDuePayments;
   }
 
   // ACCOUNT ICON
@@ -170,6 +180,8 @@ class AccountsPage extends StatelessWidget {
 
     return primary;
   }
+
+  // COMING SOON
 
   void showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -293,142 +305,172 @@ class AccountsPage extends StatelessWidget {
 
               final transactions = transactionSnapshot.data!;
 
-              final totalBalance = accounts.fold<int>(
-                0,
-                (total, account) =>
-                    total +
-                    accountBalance(account, transactions),
-              );
+              // DUE PAYMENT STREAM
 
-              return ListView(
-                padding: const EdgeInsets.only(
-                  top: 38,
-                  bottom: 100,
-                ),
-                children: [
-                  // TOTAL LABEL
-
-                  const Center(
-                    child: Text(
-                      'Total:',
-                      style: TextStyle(
-                        fontSize: 22,
-                        color: Colors.black54,
+              return StreamBuilder<List<DuePayment>>(
+                stream: database.watchAllDuePayments(),
+                builder: (context, paymentSnapshot) {
+                  if (paymentSnapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error: ${paymentSnapshot.error}',
                       ),
-                    ),
-                  ),
+                    );
+                  }
 
-                  const SizedBox(height: 4),
+                  if (!paymentSnapshot.hasData) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  final duePayments = paymentSnapshot.data!;
 
                   // TOTAL BALANCE
 
-                  Center(
-                    child: Text(
-                      formatMoney(totalBalance),
-                      style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w600,
-                        color: darkText,
-                      ),
+                  final totalBalance = accounts.fold<int>(
+                    0,
+                    (total, account) =>
+                        total +
+                        accountBalance(
+                          account,
+                          transactions,
+                          duePayments,
+                        ),
+                  );
+
+                  return ListView(
+                    padding: const EdgeInsets.only(
+                      top: 38,
+                      bottom: 100,
                     ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // TRANSFER SHORTCUTS
-
-                  Row(
                     children: [
-                      Expanded(
-                        child: _Shortcut(
-                          icon: Icons.history,
-                          title: 'Transfer history',
-                          onTap: () => showComingSoon(
-                            context,
-                            'Transfer history',
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: _Shortcut(
-                          icon: Icons.swap_horiz,
-                          title: 'New transfer',
-                          onTap: () => showComingSoon(
-                            context,
-                            'Account transfers',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                      // TOTAL LABEL
 
-                  const SizedBox(height: 24),
-
-                  // ACCOUNTS
-
-                  if (accounts.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(30),
-                      child: Center(
+                      const Center(
                         child: Text(
-                          'No accounts yet. Add your first account.',
-                        ),
-                      ),
-                    ),
-
-                  ...accounts.map((account) {
-                    final balance = accountBalance(
-                      account,
-                      transactions,
-                    );
-
-                    final color = accountColor(account.name);
-
-                    return Card(
-                      color: Colors.white,
-                      elevation: 2,
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(17),
-                      ),
-                      child: ListTile(
-                        contentPadding:
-                            const EdgeInsets.symmetric(
-                          horizontal: 15,
-                          vertical: 8,
-                        ),
-                        leading: CircleAvatar(
-                          radius: 23,
-                          backgroundColor: color,
-                          child: Icon(
-                            accountIcon(account.name),
-                            color: Colors.white,
-                            size: 24,
+                          'Total:',
+                          style: TextStyle(
+                            fontSize: 22,
+                            color: Colors.black54,
                           ),
                         ),
-                        title: Text(
-                          account.name,
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      // TOTAL BALANCE
+
+                      Center(
+                        child: Text(
+                          formatMoney(totalBalance),
                           style: const TextStyle(
-                            fontSize: 18,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        trailing: Text(
-                          formatMoney(balance),
-                          style: const TextStyle(
-                            fontSize: 17,
+                            fontSize: 36,
+                            fontWeight: FontWeight.w600,
                             color: darkText,
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                    );
-                  }),
-                ],
+
+                      const SizedBox(height: 32),
+
+                      // TRANSFER SHORTCUTS
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _Shortcut(
+                              icon: Icons.history,
+                              title: 'Transfer history',
+                              onTap: () => showComingSoon(
+                                context,
+                                'Transfer history',
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: _Shortcut(
+                              icon: Icons.swap_horiz,
+                              title: 'New transfer',
+                              onTap: () => showComingSoon(
+                                context,
+                                'Account transfers',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // ACCOUNTS
+
+                      if (accounts.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(30),
+                          child: Center(
+                            child: Text(
+                              'No accounts yet. Add your first account.',
+                            ),
+                          ),
+                        ),
+
+                      ...accounts.map((account) {
+                        final balance = accountBalance(
+                          account,
+                          transactions,
+                          duePayments,
+                        );
+
+                        final color = accountColor(account.name);
+
+                        return Card(
+                          color: Colors.white,
+                          elevation: 2,
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(17),
+                          ),
+                          child: ListTile(
+                            contentPadding:
+                                const EdgeInsets.symmetric(
+                              horizontal: 15,
+                              vertical: 8,
+                            ),
+                            leading: CircleAvatar(
+                              radius: 23,
+                              backgroundColor: color,
+                              child: Icon(
+                                accountIcon(account.name),
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            title: Text(
+                              account.name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            trailing: Text(
+                              formatMoney(balance),
+                              style: const TextStyle(
+                                fontSize: 17,
+                                color: darkText,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  );
+                },
               );
             },
           );
