@@ -1,3 +1,4 @@
+
 import 'package:drift/drift.dart';
 
 class Transactions extends Table {
@@ -9,7 +10,12 @@ class Transactions extends Table {
 
   TextColumn get title => text()();
 
+  // Total income or expense amount.
   IntColumn get amountPaisa => integer()();
+
+  // Amount actually paid at the time of the transaction.
+  IntColumn get paidAmountPaisa =>
+      integer().withDefault(const Constant(0))();
 
   TextColumn get type => text()();
 
