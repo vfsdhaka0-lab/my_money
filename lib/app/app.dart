@@ -1,7 +1,10 @@
-// ignore_for_file: deprecated_member_use
+
+ // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
+
 import '../features/accounts/accounts_page.dart';
 import '../features/transactions/transactions_page.dart';
+import '../features/categories/categories_page.dart';
 import 'theme.dart';
 
 class MyMoneyApp extends StatelessWidget {
@@ -31,6 +34,7 @@ class _HomePageState extends State<HomePage> {
   final pages = const [
     AccountsPage(),
     TransactionsPage(),
+    CategoriesPage(),
   ];
 
   @override
@@ -50,6 +54,11 @@ class _HomePageState extends State<HomePage> {
           NavigationDestination(
             icon: Icon(Icons.receipt_long),
             label: 'Transactions',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.category_outlined),
+            selectedIcon: Icon(Icons.category),
+            label: 'Categories',
           ),
         ],
       ),
