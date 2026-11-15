@@ -1,4 +1,8 @@
-// ignore_for_file: deprecated_member_useimport 'package:flutter/material.dart';
+
+ // ignore_for_file: deprecated_member_use
+
+import 'package:flutter/material.dart';
+
 class AppTheme {
   static const Color primary = Color(0xFF4FA38D);
   static const Color background = Color(0xFFF8F9F2);
