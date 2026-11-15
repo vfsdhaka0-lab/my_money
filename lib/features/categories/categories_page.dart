@@ -66,6 +66,7 @@ class _CategoriesPageState extends State<CategoriesPage>
       (item) => item['name'] == name,
       orElse: () => {'icon': Icons.category},
     );
+
     return item['icon'] as IconData;
   }
 
@@ -100,7 +101,9 @@ class _CategoriesPageState extends State<CategoriesPage>
                     const SizedBox(height: 20),
                     const Text(
                       'Choose icon',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Wrap(
@@ -126,7 +129,8 @@ class _CategoriesPageState extends State<CategoriesPage>
                                       .primary
                                       .withOpacity(0.15)
                                   : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius:
+                                  BorderRadius.circular(12),
                               border: Border.all(
                                 color: isSelected
                                     ? Theme.of(context)
@@ -147,7 +151,9 @@ class _CategoriesPageState extends State<CategoriesPage>
                     const SizedBox(height: 20),
                     const Text(
                       'Choose color',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Wrap(
@@ -194,7 +200,9 @@ class _CategoriesPageState extends State<CategoriesPage>
                     if (name.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Please enter a category name'),
+                          content: Text(
+                            'Please enter a category name',
+                          ),
                         ),
                       );
                       return;
@@ -225,7 +233,9 @@ class _CategoriesPageState extends State<CategoriesPage>
 
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
                         SnackBar(
-                          content: Text('Could not add category: $e'),
+                          content: Text(
+                            'Could not add category: $e',
+                          ),
                         ),
                       );
                     }
@@ -281,7 +291,9 @@ class _CategoriesPageState extends State<CategoriesPage>
                 const SizedBox(height: 8),
                 const Text(
                   'Tap + to add your first category',
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(
+                    color: Colors.grey,
+                  ),
                 ),
               ],
             ),
@@ -313,18 +325,17 @@ class _CategoriesPageState extends State<CategoriesPage>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircleAvatar(
-                    radius: 25,
-                    backgroundColor: color.withOpacity(0.13),
-                    child: Icon(
-                      _getIcon(category.icon),
-                      color: color,
-                      size: 25,
-                    ),
+                  // FULL-COLOR ICON WITHOUT CIRCULAR BACKGROUND
+                  Icon(
+                    _getIcon(category.icon),
+                    color: color,
+                    size: 42,
                   ),
-                  const SizedBox(height: 9),
+                  const SizedBox(height: 12),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                    ),
                     child: Text(
                       category.name,
                       textAlign: TextAlign.center,
@@ -352,7 +363,9 @@ class _CategoriesPageState extends State<CategoriesPage>
       appBar: AppBar(
         title: const Text(
           'Categories',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: true,
         backgroundColor: const Color(0xFF4FA38D),
