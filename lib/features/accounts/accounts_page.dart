@@ -1,4 +1,6 @@
-// ignore_for_file: deprecated_member_use
+
+ // ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 import '../../shared/database_instance.dart';
@@ -13,6 +15,8 @@ class AccountsPage extends StatelessWidget {
   static const Color background = Color(0xFFF8F9F2);
   static const Color accent = Color(0xFFFFB900);
   static const Color darkText = Color(0xFF414331);
+
+  // ADD ACCOUNT
 
   Future<void> addAccount(BuildContext context) async {
     final nameController = TextEditingController();
@@ -56,10 +60,14 @@ class AccountsPage extends StatelessWidget {
                   balanceController.text.trim(),
                 );
 
-                if (name.isEmpty || balance == null || balance < 0) {
+                if (name.isEmpty ||
+                    balance == null ||
+                    balance < 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Enter a valid name and balance.'),
+                      content: Text(
+                        'Enter a valid name and balance.',
+                      ),
                     ),
                   );
                   return;
@@ -95,6 +103,8 @@ class AccountsPage extends StatelessWidget {
     }
   }
 
+  // ACCOUNT BALANCE
+
   int accountBalance(
     Account account,
     List<Transaction> transactions,
@@ -117,6 +127,8 @@ class AccountsPage extends StatelessWidget {
     );
   }
 
+  // ACCOUNT ICON
+
   IconData accountIcon(String name) {
     final value = name.toLowerCase();
 
@@ -134,6 +146,8 @@ class AccountsPage extends StatelessWidget {
 
     return Icons.wallet_outlined;
   }
+
+  // ACCOUNT COLOR
 
   Color accountColor(String name) {
     final value = name.toLowerCase();
@@ -160,7 +174,9 @@ class AccountsPage extends StatelessWidget {
   void showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$feature will be available in a future update.'),
+        content: Text(
+          '$feature will be available in a future update.',
+        ),
       ),
     );
   }
@@ -170,26 +186,32 @@ class AccountsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: background,
 
+      // DRAWER
+
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             const DrawerHeader(
-              decoration: BoxDecoration(color: primary),
+              decoration: BoxDecoration(
+                color: primary,
+              ),
               child: Align(
                 alignment: Alignment.bottomLeft,
                 child: Text(
                   'MyMoney',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 26,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.account_balance_wallet),
+              leading: const Icon(
+                Icons.account_balance_wallet,
+              ),
               title: const Text('Accounts'),
               onTap: () => Navigator.pop(context),
             ),
@@ -210,6 +232,8 @@ class AccountsPage extends StatelessWidget {
         ),
       ),
 
+      // APP BAR
+
       appBar: AppBar(
         backgroundColor: primary,
         foregroundColor: Colors.white,
@@ -223,18 +247,22 @@ class AccountsPage extends StatelessWidget {
         title: const Text(
           'Accounts',
           style: TextStyle(
-            fontSize: 25,
+            fontSize: 22,
             fontWeight: FontWeight.w600,
           ),
         ),
       ),
+
+      // ACCOUNT LIST
 
       body: StreamBuilder<List<Account>>(
         stream: database.watchAccounts(),
         builder: (context, accountSnapshot) {
           if (accountSnapshot.hasError) {
             return Center(
-              child: Text('Error: ${accountSnapshot.error}'),
+              child: Text(
+                'Error: ${accountSnapshot.error}',
+              ),
             );
           }
 
@@ -251,7 +279,9 @@ class AccountsPage extends StatelessWidget {
             builder: (context, transactionSnapshot) {
               if (transactionSnapshot.hasError) {
                 return Center(
-                  child: Text('Error: ${transactionSnapshot.error}'),
+                  child: Text(
+                    'Error: ${transactionSnapshot.error}',
+                  ),
                 );
               }
 
@@ -266,41 +296,44 @@ class AccountsPage extends StatelessWidget {
               final totalBalance = accounts.fold<int>(
                 0,
                 (total, account) =>
-                    total + accountBalance(account, transactions),
+                    total +
+                    accountBalance(account, transactions),
               );
 
               return ListView(
                 padding: const EdgeInsets.only(
-                  top: 48,
-                  bottom: 110,
+                  top: 38,
+                  bottom: 100,
                 ),
                 children: [
-                  // TOTAL BALANCE
+                  // TOTAL LABEL
 
                   const Center(
                     child: Text(
                       'Total:',
                       style: TextStyle(
-                        fontSize: 27,
+                        fontSize: 22,
                         color: Colors.black54,
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
+
+                  // TOTAL BALANCE
 
                   Center(
                     child: Text(
                       formatMoney(totalBalance),
                       style: const TextStyle(
-                        fontSize: 46,
+                        fontSize: 36,
                         fontWeight: FontWeight.w600,
                         color: darkText,
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 38),
+                  const SizedBox(height: 32),
 
                   // TRANSFER SHORTCUTS
 
@@ -329,15 +362,17 @@ class AccountsPage extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 24),
 
-                  // ACCOUNT LIST
+                  // ACCOUNTS
 
                   if (accounts.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(30),
                       child: Center(
-                        child: Text('No accounts yet. Add your first account.'),
+                        child: Text(
+                          'No accounts yet. Add your first account.',
+                        ),
                       ),
                     ),
 
@@ -354,29 +389,30 @@ class AccountsPage extends StatelessWidget {
                       elevation: 2,
                       margin: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 7,
+                        vertical: 6,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(17),
                       ),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
+                        contentPadding:
+                            const EdgeInsets.symmetric(
                           horizontal: 15,
-                          vertical: 12,
+                          vertical: 8,
                         ),
                         leading: CircleAvatar(
-                          radius: 28,
+                          radius: 23,
                           backgroundColor: color,
                           child: Icon(
                             accountIcon(account.name),
                             color: Colors.white,
-                            size: 29,
+                            size: 24,
                           ),
                         ),
                         title: Text(
                           account.name,
                           style: const TextStyle(
-                            fontSize: 21,
+                            fontSize: 18,
                             color: Colors.black,
                             fontWeight: FontWeight.w500,
                           ),
@@ -384,7 +420,7 @@ class AccountsPage extends StatelessWidget {
                         trailing: Text(
                           formatMoney(balance),
                           style: const TextStyle(
-                            fontSize: 21,
+                            fontSize: 17,
                             color: darkText,
                             fontWeight: FontWeight.w500,
                           ),
@@ -399,14 +435,17 @@ class AccountsPage extends StatelessWidget {
         },
       ),
 
+      // ADD ACCOUNT BUTTON
+
       floatingActionButton: FloatingActionButton(
+        mini: true,
         backgroundColor: accent,
         foregroundColor: darkText,
         elevation: 5,
         onPressed: () => addAccount(context),
         child: const Icon(
           Icons.add,
-          size: 34,
+          size: 28,
         ),
       ),
 
@@ -415,6 +454,8 @@ class AccountsPage extends StatelessWidget {
     );
   }
 }
+
+// TRANSFER SHORTCUT WIDGET
 
 class _Shortcut extends StatelessWidget {
   final IconData icon;
@@ -435,24 +476,24 @@ class _Shortcut extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 84,
-            height: 84,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
               color: AccountsPage.primary,
-              borderRadius: BorderRadius.circular(27),
+              borderRadius: BorderRadius.circular(21),
             ),
             child: Icon(
               icon,
               color: Colors.white,
-              size: 42,
+              size: 32,
             ),
           ),
-          const SizedBox(height: 9),
+          const SizedBox(height: 8),
           Text(
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 15,
               color: AccountsPage.darkText,
             ),
           ),
