@@ -438,14 +438,15 @@ class AccountsPage extends StatelessWidget {
       // ADD ACCOUNT BUTTON
 
       floatingActionButton: FloatingActionButton(
-        mini: true,
+        mini: false,
+        shape: const CircleBorder(),
         backgroundColor: accent,
         foregroundColor: darkText,
         elevation: 5,
         onPressed: () => addAccount(context),
         child: const Icon(
           Icons.add,
-          size: 28,
+          size: 32,
         ),
       ),
 
