@@ -844,6 +844,18 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _paidAmountPaisaMeta = const VerificationMeta(
+    'paidAmountPaisa',
+  );
+  @override
+  late final GeneratedColumn<int> paidAmountPaisa = GeneratedColumn<int>(
+    'paid_amount_paisa',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _typeMeta = const VerificationMeta('type');
   @override
   late final GeneratedColumn<String> type = GeneratedColumn<String>(
@@ -890,6 +902,7 @@ class $TransactionsTable extends Transactions
     categoryId,
     title,
     amountPaisa,
+    paidAmountPaisa,
     type,
     note,
     date,
@@ -942,6 +955,15 @@ class $TransactionsTable extends Transactions
       );
     } else if (isInserting) {
       context.missing(_amountPaisaMeta);
+    }
+    if (data.containsKey('paid_amount_paisa')) {
+      context.handle(
+        _paidAmountPaisaMeta,
+        paidAmountPaisa.isAcceptableOrUnknown(
+          data['paid_amount_paisa']!,
+          _paidAmountPaisaMeta,
+        ),
+      );
     }
     if (data.containsKey('type')) {
       context.handle(
@@ -1000,6 +1022,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}amount_paisa'],
       )!,
+      paidAmountPaisa: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}paid_amount_paisa'],
+      )!,
       type: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}type'],
@@ -1031,6 +1057,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final int? categoryId;
   final String title;
   final int amountPaisa;
+  final int paidAmountPaisa;
   final String type;
   final String? note;
   final DateTime date;
@@ -1041,6 +1068,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.categoryId,
     required this.title,
     required this.amountPaisa,
+    required this.paidAmountPaisa,
     required this.type,
     this.note,
     required this.date,
@@ -1056,6 +1084,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     map['title'] = Variable<String>(title);
     map['amount_paisa'] = Variable<int>(amountPaisa);
+    map['paid_amount_paisa'] = Variable<int>(paidAmountPaisa);
     map['type'] = Variable<String>(type);
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
@@ -1074,6 +1103,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           : Value(categoryId),
       title: Value(title),
       amountPaisa: Value(amountPaisa),
+      paidAmountPaisa: Value(paidAmountPaisa),
       type: Value(type),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       date: Value(date),
@@ -1092,6 +1122,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       title: serializer.fromJson<String>(json['title']),
       amountPaisa: serializer.fromJson<int>(json['amountPaisa']),
+      paidAmountPaisa: serializer.fromJson<int>(json['paidAmountPaisa']),
       type: serializer.fromJson<String>(json['type']),
       note: serializer.fromJson<String?>(json['note']),
       date: serializer.fromJson<DateTime>(json['date']),
@@ -1107,6 +1138,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'categoryId': serializer.toJson<int?>(categoryId),
       'title': serializer.toJson<String>(title),
       'amountPaisa': serializer.toJson<int>(amountPaisa),
+      'paidAmountPaisa': serializer.toJson<int>(paidAmountPaisa),
       'type': serializer.toJson<String>(type),
       'note': serializer.toJson<String?>(note),
       'date': serializer.toJson<DateTime>(date),
@@ -1120,6 +1152,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<int?> categoryId = const Value.absent(),
     String? title,
     int? amountPaisa,
+    int? paidAmountPaisa,
     String? type,
     Value<String?> note = const Value.absent(),
     DateTime? date,
@@ -1130,6 +1163,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     title: title ?? this.title,
     amountPaisa: amountPaisa ?? this.amountPaisa,
+    paidAmountPaisa: paidAmountPaisa ?? this.paidAmountPaisa,
     type: type ?? this.type,
     note: note.present ? note.value : this.note,
     date: date ?? this.date,
@@ -1146,6 +1180,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       amountPaisa: data.amountPaisa.present
           ? data.amountPaisa.value
           : this.amountPaisa,
+      paidAmountPaisa: data.paidAmountPaisa.present
+          ? data.paidAmountPaisa.value
+          : this.paidAmountPaisa,
       type: data.type.present ? data.type.value : this.type,
       note: data.note.present ? data.note.value : this.note,
       date: data.date.present ? data.date.value : this.date,
@@ -1161,6 +1198,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('categoryId: $categoryId, ')
           ..write('title: $title, ')
           ..write('amountPaisa: $amountPaisa, ')
+          ..write('paidAmountPaisa: $paidAmountPaisa, ')
           ..write('type: $type, ')
           ..write('note: $note, ')
           ..write('date: $date, ')
@@ -1176,6 +1214,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     categoryId,
     title,
     amountPaisa,
+    paidAmountPaisa,
     type,
     note,
     date,
@@ -1190,6 +1229,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.categoryId == this.categoryId &&
           other.title == this.title &&
           other.amountPaisa == this.amountPaisa &&
+          other.paidAmountPaisa == this.paidAmountPaisa &&
           other.type == this.type &&
           other.note == this.note &&
           other.date == this.date &&
@@ -1202,6 +1242,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<int?> categoryId;
   final Value<String> title;
   final Value<int> amountPaisa;
+  final Value<int> paidAmountPaisa;
   final Value<String> type;
   final Value<String?> note;
   final Value<DateTime> date;
@@ -1212,6 +1253,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.categoryId = const Value.absent(),
     this.title = const Value.absent(),
     this.amountPaisa = const Value.absent(),
+    this.paidAmountPaisa = const Value.absent(),
     this.type = const Value.absent(),
     this.note = const Value.absent(),
     this.date = const Value.absent(),
@@ -1223,6 +1265,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.categoryId = const Value.absent(),
     required String title,
     required int amountPaisa,
+    this.paidAmountPaisa = const Value.absent(),
     required String type,
     this.note = const Value.absent(),
     required DateTime date,
@@ -1238,6 +1281,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<int>? categoryId,
     Expression<String>? title,
     Expression<int>? amountPaisa,
+    Expression<int>? paidAmountPaisa,
     Expression<String>? type,
     Expression<String>? note,
     Expression<DateTime>? date,
@@ -1249,6 +1293,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (categoryId != null) 'category_id': categoryId,
       if (title != null) 'title': title,
       if (amountPaisa != null) 'amount_paisa': amountPaisa,
+      if (paidAmountPaisa != null) 'paid_amount_paisa': paidAmountPaisa,
       if (type != null) 'type': type,
       if (note != null) 'note': note,
       if (date != null) 'date': date,
@@ -1262,6 +1307,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<int?>? categoryId,
     Value<String>? title,
     Value<int>? amountPaisa,
+    Value<int>? paidAmountPaisa,
     Value<String>? type,
     Value<String?>? note,
     Value<DateTime>? date,
@@ -1273,6 +1319,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       categoryId: categoryId ?? this.categoryId,
       title: title ?? this.title,
       amountPaisa: amountPaisa ?? this.amountPaisa,
+      paidAmountPaisa: paidAmountPaisa ?? this.paidAmountPaisa,
       type: type ?? this.type,
       note: note ?? this.note,
       date: date ?? this.date,
@@ -1298,6 +1345,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (amountPaisa.present) {
       map['amount_paisa'] = Variable<int>(amountPaisa.value);
     }
+    if (paidAmountPaisa.present) {
+      map['paid_amount_paisa'] = Variable<int>(paidAmountPaisa.value);
+    }
     if (type.present) {
       map['type'] = Variable<String>(type.value);
     }
@@ -1321,9 +1371,863 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('categoryId: $categoryId, ')
           ..write('title: $title, ')
           ..write('amountPaisa: $amountPaisa, ')
+          ..write('paidAmountPaisa: $paidAmountPaisa, ')
           ..write('type: $type, ')
           ..write('note: $note, ')
           ..write('date: $date, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DuesTable extends Dues with TableInfo<$DuesTable, Due> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _storeNameMeta = const VerificationMeta(
+    'storeName',
+  );
+  @override
+  late final GeneratedColumn<String> storeName = GeneratedColumn<String>(
+    'store_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+    'transaction_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _initialPaidPaisaMeta = const VerificationMeta(
+    'initialPaidPaisa',
+  );
+  @override
+  late final GeneratedColumn<int> initialPaidPaisa = GeneratedColumn<int>(
+    'initial_paid_paisa',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    storeName,
+    transactionId,
+    initialPaidPaisa,
+    createdAt,
+    note,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'dues';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Due> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('store_name')) {
+      context.handle(
+        _storeNameMeta,
+        storeName.isAcceptableOrUnknown(data['store_name']!, _storeNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_storeNameMeta);
+    }
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionIdMeta);
+    }
+    if (data.containsKey('initial_paid_paisa')) {
+      context.handle(
+        _initialPaidPaisaMeta,
+        initialPaidPaisa.isAcceptableOrUnknown(
+          data['initial_paid_paisa']!,
+          _initialPaidPaisaMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_initialPaidPaisaMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Due map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Due(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      storeName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}store_name'],
+      )!,
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transaction_id'],
+      )!,
+      initialPaidPaisa: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}initial_paid_paisa'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+    );
+  }
+
+  @override
+  $DuesTable createAlias(String alias) {
+    return $DuesTable(attachedDatabase, alias);
+  }
+}
+
+class Due extends DataClass implements Insertable<Due> {
+  final int id;
+  final String storeName;
+  final int transactionId;
+  final int initialPaidPaisa;
+  final DateTime createdAt;
+  final String? note;
+  const Due({
+    required this.id,
+    required this.storeName,
+    required this.transactionId,
+    required this.initialPaidPaisa,
+    required this.createdAt,
+    this.note,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['store_name'] = Variable<String>(storeName);
+    map['transaction_id'] = Variable<int>(transactionId);
+    map['initial_paid_paisa'] = Variable<int>(initialPaidPaisa);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    return map;
+  }
+
+  DuesCompanion toCompanion(bool nullToAbsent) {
+    return DuesCompanion(
+      id: Value(id),
+      storeName: Value(storeName),
+      transactionId: Value(transactionId),
+      initialPaidPaisa: Value(initialPaidPaisa),
+      createdAt: Value(createdAt),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+    );
+  }
+
+  factory Due.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Due(
+      id: serializer.fromJson<int>(json['id']),
+      storeName: serializer.fromJson<String>(json['storeName']),
+      transactionId: serializer.fromJson<int>(json['transactionId']),
+      initialPaidPaisa: serializer.fromJson<int>(json['initialPaidPaisa']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      note: serializer.fromJson<String?>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'storeName': serializer.toJson<String>(storeName),
+      'transactionId': serializer.toJson<int>(transactionId),
+      'initialPaidPaisa': serializer.toJson<int>(initialPaidPaisa),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'note': serializer.toJson<String?>(note),
+    };
+  }
+
+  Due copyWith({
+    int? id,
+    String? storeName,
+    int? transactionId,
+    int? initialPaidPaisa,
+    DateTime? createdAt,
+    Value<String?> note = const Value.absent(),
+  }) => Due(
+    id: id ?? this.id,
+    storeName: storeName ?? this.storeName,
+    transactionId: transactionId ?? this.transactionId,
+    initialPaidPaisa: initialPaidPaisa ?? this.initialPaidPaisa,
+    createdAt: createdAt ?? this.createdAt,
+    note: note.present ? note.value : this.note,
+  );
+  Due copyWithCompanion(DuesCompanion data) {
+    return Due(
+      id: data.id.present ? data.id.value : this.id,
+      storeName: data.storeName.present ? data.storeName.value : this.storeName,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+      initialPaidPaisa: data.initialPaidPaisa.present
+          ? data.initialPaidPaisa.value
+          : this.initialPaidPaisa,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Due(')
+          ..write('id: $id, ')
+          ..write('storeName: $storeName, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('initialPaidPaisa: $initialPaidPaisa, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    storeName,
+    transactionId,
+    initialPaidPaisa,
+    createdAt,
+    note,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Due &&
+          other.id == this.id &&
+          other.storeName == this.storeName &&
+          other.transactionId == this.transactionId &&
+          other.initialPaidPaisa == this.initialPaidPaisa &&
+          other.createdAt == this.createdAt &&
+          other.note == this.note);
+}
+
+class DuesCompanion extends UpdateCompanion<Due> {
+  final Value<int> id;
+  final Value<String> storeName;
+  final Value<int> transactionId;
+  final Value<int> initialPaidPaisa;
+  final Value<DateTime> createdAt;
+  final Value<String?> note;
+  const DuesCompanion({
+    this.id = const Value.absent(),
+    this.storeName = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    this.initialPaidPaisa = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.note = const Value.absent(),
+  });
+  DuesCompanion.insert({
+    this.id = const Value.absent(),
+    required String storeName,
+    required int transactionId,
+    required int initialPaidPaisa,
+    this.createdAt = const Value.absent(),
+    this.note = const Value.absent(),
+  }) : storeName = Value(storeName),
+       transactionId = Value(transactionId),
+       initialPaidPaisa = Value(initialPaidPaisa);
+  static Insertable<Due> custom({
+    Expression<int>? id,
+    Expression<String>? storeName,
+    Expression<int>? transactionId,
+    Expression<int>? initialPaidPaisa,
+    Expression<DateTime>? createdAt,
+    Expression<String>? note,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (storeName != null) 'store_name': storeName,
+      if (transactionId != null) 'transaction_id': transactionId,
+      if (initialPaidPaisa != null) 'initial_paid_paisa': initialPaidPaisa,
+      if (createdAt != null) 'created_at': createdAt,
+      if (note != null) 'note': note,
+    });
+  }
+
+  DuesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? storeName,
+    Value<int>? transactionId,
+    Value<int>? initialPaidPaisa,
+    Value<DateTime>? createdAt,
+    Value<String?>? note,
+  }) {
+    return DuesCompanion(
+      id: id ?? this.id,
+      storeName: storeName ?? this.storeName,
+      transactionId: transactionId ?? this.transactionId,
+      initialPaidPaisa: initialPaidPaisa ?? this.initialPaidPaisa,
+      createdAt: createdAt ?? this.createdAt,
+      note: note ?? this.note,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (storeName.present) {
+      map['store_name'] = Variable<String>(storeName.value);
+    }
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<int>(transactionId.value);
+    }
+    if (initialPaidPaisa.present) {
+      map['initial_paid_paisa'] = Variable<int>(initialPaidPaisa.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DuesCompanion(')
+          ..write('id: $id, ')
+          ..write('storeName: $storeName, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('initialPaidPaisa: $initialPaidPaisa, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DuePaymentsTable extends DuePayments
+    with TableInfo<$DuePaymentsTable, DuePayment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DuePaymentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _dueIdMeta = const VerificationMeta('dueId');
+  @override
+  late final GeneratedColumn<int> dueId = GeneratedColumn<int>(
+    'due_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<int> accountId = GeneratedColumn<int>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountPaisaMeta = const VerificationMeta(
+    'amountPaisa',
+  );
+  @override
+  late final GeneratedColumn<int> amountPaisa = GeneratedColumn<int>(
+    'amount_paisa',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    dueId,
+    accountId,
+    amountPaisa,
+    date,
+    note,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'due_payments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DuePayment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('due_id')) {
+      context.handle(
+        _dueIdMeta,
+        dueId.isAcceptableOrUnknown(data['due_id']!, _dueIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dueIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('amount_paisa')) {
+      context.handle(
+        _amountPaisaMeta,
+        amountPaisa.isAcceptableOrUnknown(
+          data['amount_paisa']!,
+          _amountPaisaMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountPaisaMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DuePayment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DuePayment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      dueId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}due_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}account_id'],
+      )!,
+      amountPaisa: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_paisa'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DuePaymentsTable createAlias(String alias) {
+    return $DuePaymentsTable(attachedDatabase, alias);
+  }
+}
+
+class DuePayment extends DataClass implements Insertable<DuePayment> {
+  final int id;
+  final int dueId;
+  final int accountId;
+  final int amountPaisa;
+  final DateTime date;
+  final String? note;
+  final DateTime createdAt;
+  const DuePayment({
+    required this.id,
+    required this.dueId,
+    required this.accountId,
+    required this.amountPaisa,
+    required this.date,
+    this.note,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['due_id'] = Variable<int>(dueId);
+    map['account_id'] = Variable<int>(accountId);
+    map['amount_paisa'] = Variable<int>(amountPaisa);
+    map['date'] = Variable<DateTime>(date);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DuePaymentsCompanion toCompanion(bool nullToAbsent) {
+    return DuePaymentsCompanion(
+      id: Value(id),
+      dueId: Value(dueId),
+      accountId: Value(accountId),
+      amountPaisa: Value(amountPaisa),
+      date: Value(date),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DuePayment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DuePayment(
+      id: serializer.fromJson<int>(json['id']),
+      dueId: serializer.fromJson<int>(json['dueId']),
+      accountId: serializer.fromJson<int>(json['accountId']),
+      amountPaisa: serializer.fromJson<int>(json['amountPaisa']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      note: serializer.fromJson<String?>(json['note']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'dueId': serializer.toJson<int>(dueId),
+      'accountId': serializer.toJson<int>(accountId),
+      'amountPaisa': serializer.toJson<int>(amountPaisa),
+      'date': serializer.toJson<DateTime>(date),
+      'note': serializer.toJson<String?>(note),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DuePayment copyWith({
+    int? id,
+    int? dueId,
+    int? accountId,
+    int? amountPaisa,
+    DateTime? date,
+    Value<String?> note = const Value.absent(),
+    DateTime? createdAt,
+  }) => DuePayment(
+    id: id ?? this.id,
+    dueId: dueId ?? this.dueId,
+    accountId: accountId ?? this.accountId,
+    amountPaisa: amountPaisa ?? this.amountPaisa,
+    date: date ?? this.date,
+    note: note.present ? note.value : this.note,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DuePayment copyWithCompanion(DuePaymentsCompanion data) {
+    return DuePayment(
+      id: data.id.present ? data.id.value : this.id,
+      dueId: data.dueId.present ? data.dueId.value : this.dueId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      amountPaisa: data.amountPaisa.present
+          ? data.amountPaisa.value
+          : this.amountPaisa,
+      date: data.date.present ? data.date.value : this.date,
+      note: data.note.present ? data.note.value : this.note,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DuePayment(')
+          ..write('id: $id, ')
+          ..write('dueId: $dueId, ')
+          ..write('accountId: $accountId, ')
+          ..write('amountPaisa: $amountPaisa, ')
+          ..write('date: $date, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, dueId, accountId, amountPaisa, date, note, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DuePayment &&
+          other.id == this.id &&
+          other.dueId == this.dueId &&
+          other.accountId == this.accountId &&
+          other.amountPaisa == this.amountPaisa &&
+          other.date == this.date &&
+          other.note == this.note &&
+          other.createdAt == this.createdAt);
+}
+
+class DuePaymentsCompanion extends UpdateCompanion<DuePayment> {
+  final Value<int> id;
+  final Value<int> dueId;
+  final Value<int> accountId;
+  final Value<int> amountPaisa;
+  final Value<DateTime> date;
+  final Value<String?> note;
+  final Value<DateTime> createdAt;
+  const DuePaymentsCompanion({
+    this.id = const Value.absent(),
+    this.dueId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.amountPaisa = const Value.absent(),
+    this.date = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  DuePaymentsCompanion.insert({
+    this.id = const Value.absent(),
+    required int dueId,
+    required int accountId,
+    required int amountPaisa,
+    required DateTime date,
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : dueId = Value(dueId),
+       accountId = Value(accountId),
+       amountPaisa = Value(amountPaisa),
+       date = Value(date);
+  static Insertable<DuePayment> custom({
+    Expression<int>? id,
+    Expression<int>? dueId,
+    Expression<int>? accountId,
+    Expression<int>? amountPaisa,
+    Expression<DateTime>? date,
+    Expression<String>? note,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (dueId != null) 'due_id': dueId,
+      if (accountId != null) 'account_id': accountId,
+      if (amountPaisa != null) 'amount_paisa': amountPaisa,
+      if (date != null) 'date': date,
+      if (note != null) 'note': note,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  DuePaymentsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? dueId,
+    Value<int>? accountId,
+    Value<int>? amountPaisa,
+    Value<DateTime>? date,
+    Value<String?>? note,
+    Value<DateTime>? createdAt,
+  }) {
+    return DuePaymentsCompanion(
+      id: id ?? this.id,
+      dueId: dueId ?? this.dueId,
+      accountId: accountId ?? this.accountId,
+      amountPaisa: amountPaisa ?? this.amountPaisa,
+      date: date ?? this.date,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (dueId.present) {
+      map['due_id'] = Variable<int>(dueId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<int>(accountId.value);
+    }
+    if (amountPaisa.present) {
+      map['amount_paisa'] = Variable<int>(amountPaisa.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DuePaymentsCompanion(')
+          ..write('id: $id, ')
+          ..write('dueId: $dueId, ')
+          ..write('accountId: $accountId, ')
+          ..write('amountPaisa: $amountPaisa, ')
+          ..write('date: $date, ')
+          ..write('note: $note, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -1336,6 +2240,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AccountsTable accounts = $AccountsTable(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
+  late final $DuesTable dues = $DuesTable(this);
+  late final $DuePaymentsTable duePayments = $DuePaymentsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1344,6 +2250,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     accounts,
     categories,
     transactions,
+    dues,
+    duePayments,
   ];
 }
 
@@ -1784,6 +2692,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<int?> categoryId,
       required String title,
       required int amountPaisa,
+      Value<int> paidAmountPaisa,
       required String type,
       Value<String?> note,
       required DateTime date,
@@ -1796,6 +2705,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<int?> categoryId,
       Value<String> title,
       Value<int> amountPaisa,
+      Value<int> paidAmountPaisa,
       Value<String> type,
       Value<String?> note,
       Value<DateTime> date,
@@ -1833,6 +2743,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<int> get amountPaisa => $composableBuilder(
     column: $table.amountPaisa,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get paidAmountPaisa => $composableBuilder(
+    column: $table.paidAmountPaisa,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1891,6 +2806,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get paidAmountPaisa => $composableBuilder(
+    column: $table.paidAmountPaisa,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get type => $composableBuilder(
     column: $table.type,
     builder: (column) => ColumnOrderings(column),
@@ -1937,6 +2857,11 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<int> get amountPaisa => $composableBuilder(
     column: $table.amountPaisa,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get paidAmountPaisa => $composableBuilder(
+    column: $table.paidAmountPaisa,
     builder: (column) => column,
   );
 
@@ -1989,6 +2914,7 @@ class $$TransactionsTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<int> amountPaisa = const Value.absent(),
+                Value<int> paidAmountPaisa = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
@@ -1999,6 +2925,7 @@ class $$TransactionsTableTableManager
                 categoryId: categoryId,
                 title: title,
                 amountPaisa: amountPaisa,
+                paidAmountPaisa: paidAmountPaisa,
                 type: type,
                 note: note,
                 date: date,
@@ -2011,6 +2938,7 @@ class $$TransactionsTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 required String title,
                 required int amountPaisa,
+                Value<int> paidAmountPaisa = const Value.absent(),
                 required String type,
                 Value<String?> note = const Value.absent(),
                 required DateTime date,
@@ -2021,6 +2949,7 @@ class $$TransactionsTableTableManager
                 categoryId: categoryId,
                 title: title,
                 amountPaisa: amountPaisa,
+                paidAmountPaisa: paidAmountPaisa,
                 type: type,
                 note: note,
                 date: date,
@@ -2060,6 +2989,461 @@ typedef $$TransactionsTableProcessedTableManager =
       Transaction,
       PrefetchHooks Function()
     >;
+typedef $$DuesTableCreateCompanionBuilder = DuesCompanion Function({
+  Value<int> id,
+  required String storeName,
+  required int transactionId,
+  required int initialPaidPaisa,
+  Value<DateTime> createdAt,
+  Value<String?> note,
+});
+typedef $$DuesTableUpdateCompanionBuilder = DuesCompanion Function({
+  Value<int> id,
+  Value<String> storeName,
+  Value<int> transactionId,
+  Value<int> initialPaidPaisa,
+  Value<DateTime> createdAt,
+  Value<String?> note,
+});
+
+class $$DuesTableFilterComposer extends Composer<_$AppDatabase, $DuesTable> {
+  $$DuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get storeName => $composableBuilder(
+    column: $table.storeName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get initialPaidPaisa => $composableBuilder(
+    column: $table.initialPaidPaisa,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DuesTableOrderingComposer extends Composer<_$AppDatabase, $DuesTable> {
+  $$DuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get storeName => $composableBuilder(
+    column: $table.storeName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get initialPaidPaisa => $composableBuilder(
+    column: $table.initialPaidPaisa,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DuesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DuesTable> {
+  $$DuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get storeName =>
+      $composableBuilder(column: $table.storeName, builder: (column) => column);
+
+  GeneratedColumn<int> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get initialPaidPaisa => $composableBuilder(
+    column: $table.initialPaidPaisa,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+}
+
+class $$DuesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DuesTable,
+          Due,
+          $$DuesTableFilterComposer,
+          $$DuesTableOrderingComposer,
+          $$DuesTableAnnotationComposer,
+          $$DuesTableCreateCompanionBuilder,
+          $$DuesTableUpdateCompanionBuilder,
+          (Due, BaseReferences<_$AppDatabase, $DuesTable, Due>),
+          Due,
+          PrefetchHooks Function()
+        > {
+  $$DuesTableTableManager(_$AppDatabase db, $DuesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DuesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DuesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DuesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> storeName = const Value.absent(),
+                Value<int> transactionId = const Value.absent(),
+                Value<int> initialPaidPaisa = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+              }) => DuesCompanion(
+                id: id,
+                storeName: storeName,
+                transactionId: transactionId,
+                initialPaidPaisa: initialPaidPaisa,
+                createdAt: createdAt,
+                note: note,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String storeName,
+                required int transactionId,
+                required int initialPaidPaisa,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+              }) => DuesCompanion.insert(
+                id: id,
+                storeName: storeName,
+                transactionId: transactionId,
+                initialPaidPaisa: initialPaidPaisa,
+                createdAt: createdAt,
+                note: note,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$DuesTable, Due>(table),
+                  BaseReferences<_$AppDatabase, $DuesTable, Due>(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DuesTable,
+      Due,
+      $$DuesTableFilterComposer,
+      $$DuesTableOrderingComposer,
+      $$DuesTableAnnotationComposer,
+      $$DuesTableCreateCompanionBuilder,
+      $$DuesTableUpdateCompanionBuilder,
+      (Due, BaseReferences<_$AppDatabase, $DuesTable, Due>),
+      Due,
+      PrefetchHooks Function()
+    >;
+typedef $$DuePaymentsTableCreateCompanionBuilder =
+    DuePaymentsCompanion Function({
+      Value<int> id,
+      required int dueId,
+      required int accountId,
+      required int amountPaisa,
+      required DateTime date,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+    });
+typedef $$DuePaymentsTableUpdateCompanionBuilder =
+    DuePaymentsCompanion Function({
+      Value<int> id,
+      Value<int> dueId,
+      Value<int> accountId,
+      Value<int> amountPaisa,
+      Value<DateTime> date,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+    });
+
+class $$DuePaymentsTableFilterComposer
+    extends Composer<_$AppDatabase, $DuePaymentsTable> {
+  $$DuePaymentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dueId => $composableBuilder(
+    column: $table.dueId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountPaisa => $composableBuilder(
+    column: $table.amountPaisa,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DuePaymentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DuePaymentsTable> {
+  $$DuePaymentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dueId => $composableBuilder(
+    column: $table.dueId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountPaisa => $composableBuilder(
+    column: $table.amountPaisa,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DuePaymentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DuePaymentsTable> {
+  $$DuePaymentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get dueId =>
+      $composableBuilder(column: $table.dueId, builder: (column) => column);
+
+  GeneratedColumn<int> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<int> get amountPaisa => $composableBuilder(
+    column: $table.amountPaisa,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$DuePaymentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DuePaymentsTable,
+          DuePayment,
+          $$DuePaymentsTableFilterComposer,
+          $$DuePaymentsTableOrderingComposer,
+          $$DuePaymentsTableAnnotationComposer,
+          $$DuePaymentsTableCreateCompanionBuilder,
+          $$DuePaymentsTableUpdateCompanionBuilder,
+          (
+            DuePayment,
+            BaseReferences<_$AppDatabase, $DuePaymentsTable, DuePayment>,
+          ),
+          DuePayment,
+          PrefetchHooks Function()
+        > {
+  $$DuePaymentsTableTableManager(_$AppDatabase db, $DuePaymentsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DuePaymentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DuePaymentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DuePaymentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> dueId = const Value.absent(),
+                Value<int> accountId = const Value.absent(),
+                Value<int> amountPaisa = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DuePaymentsCompanion(
+                id: id,
+                dueId: dueId,
+                accountId: accountId,
+                amountPaisa: amountPaisa,
+                date: date,
+                note: note,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int dueId,
+                required int accountId,
+                required int amountPaisa,
+                required DateTime date,
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DuePaymentsCompanion.insert(
+                id: id,
+                dueId: dueId,
+                accountId: accountId,
+                amountPaisa: amountPaisa,
+                date: date,
+                note: note,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$DuePaymentsTable, DuePayment>(table),
+                  BaseReferences<_$AppDatabase, $DuePaymentsTable, DuePayment>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DuePaymentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DuePaymentsTable,
+      DuePayment,
+      $$DuePaymentsTableFilterComposer,
+      $$DuePaymentsTableOrderingComposer,
+      $$DuePaymentsTableAnnotationComposer,
+      $$DuePaymentsTableCreateCompanionBuilder,
+      $$DuePaymentsTableUpdateCompanionBuilder,
+      (
+        DuePayment,
+        BaseReferences<_$AppDatabase, $DuePaymentsTable, DuePayment>,
+      ),
+      DuePayment,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2070,4 +3454,7 @@ class $AppDatabaseManager {
       $$CategoriesTableTableManager(_db, _db.categories);
   $$TransactionsTableTableManager get transactions =>
       $$TransactionsTableTableManager(_db, _db.transactions);
+  $$DuesTableTableManager get dues => $$DuesTableTableManager(_db, _db.dues);
+  $$DuePaymentsTableTableManager get duePayments =>
+      $$DuePaymentsTableTableManager(_db, _db.duePayments);
 }
