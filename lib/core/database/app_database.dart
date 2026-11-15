@@ -23,7 +23,21 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  // DATABASE MIGRATION
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(categories, categories.color);
+          }
+        },
+      );
 
   // ACCOUNTS
 
@@ -73,6 +87,8 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 }
+
+// DATABASE CONNECTION
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
