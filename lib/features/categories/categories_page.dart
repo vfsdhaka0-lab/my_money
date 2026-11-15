@@ -372,6 +372,7 @@ class _CategoriesPageState extends State<CategoriesPage>
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
+          dividerColor: Colors.transparent,
           indicatorColor: const Color(0xFFFFB900),
           indicatorWeight: 3,
           labelColor: Colors.white,
