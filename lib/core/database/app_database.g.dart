@@ -449,6 +449,16 @@ class $CategoriesTable extends Categories
     requiredDuringInsert: false,
     defaultValue: const Constant('category'),
   );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('#4FA38D'),
+  );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
   );
@@ -465,7 +475,7 @@ class $CategoriesTable extends Categories
     defaultValue: const Constant(true),
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, type, icon, isActive];
+  List<GeneratedColumn> get $columns => [id, name, type, icon, color, isActive];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -503,6 +513,12 @@ class $CategoriesTable extends Categories
         icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
       );
     }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
     if (data.containsKey('is_active')) {
       context.handle(
         _isActiveMeta,
@@ -534,6 +550,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.string,
         data['${effectivePrefix}icon'],
       )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color'],
+      )!,
       isActive: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
@@ -552,12 +572,14 @@ class Category extends DataClass implements Insertable<Category> {
   final String name;
   final String type;
   final String icon;
+  final String color;
   final bool isActive;
   const Category({
     required this.id,
     required this.name,
     required this.type,
     required this.icon,
+    required this.color,
     required this.isActive,
   });
   @override
@@ -567,6 +589,7 @@ class Category extends DataClass implements Insertable<Category> {
     map['name'] = Variable<String>(name);
     map['type'] = Variable<String>(type);
     map['icon'] = Variable<String>(icon);
+    map['color'] = Variable<String>(color);
     map['is_active'] = Variable<bool>(isActive);
     return map;
   }
@@ -577,6 +600,7 @@ class Category extends DataClass implements Insertable<Category> {
       name: Value(name),
       type: Value(type),
       icon: Value(icon),
+      color: Value(color),
       isActive: Value(isActive),
     );
   }
@@ -591,6 +615,7 @@ class Category extends DataClass implements Insertable<Category> {
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<String>(json['type']),
       icon: serializer.fromJson<String>(json['icon']),
+      color: serializer.fromJson<String>(json['color']),
       isActive: serializer.fromJson<bool>(json['isActive']),
     );
   }
@@ -602,6 +627,7 @@ class Category extends DataClass implements Insertable<Category> {
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<String>(type),
       'icon': serializer.toJson<String>(icon),
+      'color': serializer.toJson<String>(color),
       'isActive': serializer.toJson<bool>(isActive),
     };
   }
@@ -611,12 +637,14 @@ class Category extends DataClass implements Insertable<Category> {
     String? name,
     String? type,
     String? icon,
+    String? color,
     bool? isActive,
   }) => Category(
     id: id ?? this.id,
     name: name ?? this.name,
     type: type ?? this.type,
     icon: icon ?? this.icon,
+    color: color ?? this.color,
     isActive: isActive ?? this.isActive,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
@@ -625,6 +653,7 @@ class Category extends DataClass implements Insertable<Category> {
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
       icon: data.icon.present ? data.icon.value : this.icon,
+      color: data.color.present ? data.color.value : this.color,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
     );
   }
@@ -636,13 +665,14 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('icon: $icon, ')
+          ..write('color: $color, ')
           ..write('isActive: $isActive')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, icon, isActive);
+  int get hashCode => Object.hash(id, name, type, icon, color, isActive);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -651,6 +681,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.name == this.name &&
           other.type == this.type &&
           other.icon == this.icon &&
+          other.color == this.color &&
           other.isActive == this.isActive);
 }
 
@@ -659,12 +690,14 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> name;
   final Value<String> type;
   final Value<String> icon;
+  final Value<String> color;
   final Value<bool> isActive;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
     this.icon = const Value.absent(),
+    this.color = const Value.absent(),
     this.isActive = const Value.absent(),
   });
   CategoriesCompanion.insert({
@@ -672,6 +705,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     required String name,
     required String type,
     this.icon = const Value.absent(),
+    this.color = const Value.absent(),
     this.isActive = const Value.absent(),
   }) : name = Value(name),
        type = Value(type);
@@ -680,6 +714,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? name,
     Expression<String>? type,
     Expression<String>? icon,
+    Expression<String>? color,
     Expression<bool>? isActive,
   }) {
     return RawValuesInsertable({
@@ -687,6 +722,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (name != null) 'name': name,
       if (type != null) 'type': type,
       if (icon != null) 'icon': icon,
+      if (color != null) 'color': color,
       if (isActive != null) 'is_active': isActive,
     });
   }
@@ -696,6 +732,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String>? name,
     Value<String>? type,
     Value<String>? icon,
+    Value<String>? color,
     Value<bool>? isActive,
   }) {
     return CategoriesCompanion(
@@ -703,6 +740,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       name: name ?? this.name,
       type: type ?? this.type,
       icon: icon ?? this.icon,
+      color: color ?? this.color,
       isActive: isActive ?? this.isActive,
     );
   }
@@ -722,6 +760,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (icon.present) {
       map['icon'] = Variable<String>(icon.value);
     }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
@@ -735,6 +776,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('icon: $icon, ')
+          ..write('color: $color, ')
           ..write('isActive: $isActive')
           ..write(')'))
         .toString();
@@ -1526,6 +1568,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   required String name,
   required String type,
   Value<String> icon,
+  Value<String> color,
   Value<bool> isActive,
 });
 typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
@@ -1533,6 +1576,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<String> name,
   Value<String> type,
   Value<String> icon,
+  Value<String> color,
   Value<bool> isActive,
 });
 
@@ -1562,6 +1606,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<String> get icon => $composableBuilder(
     column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get color => $composableBuilder(
+    column: $table.color,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1600,6 +1649,11 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isActive => $composableBuilder(
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
@@ -1626,6 +1680,9 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<String> get icon =>
       $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<String> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
@@ -1663,12 +1720,14 @@ class $$CategoriesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<String> icon = const Value.absent(),
+                Value<String> color = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
                 type: type,
                 icon: icon,
+                color: color,
                 isActive: isActive,
               ),
           createCompanionCallback:
@@ -1677,12 +1736,14 @@ class $$CategoriesTableTableManager
                 required String name,
                 required String type,
                 Value<String> icon = const Value.absent(),
+                Value<String> color = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
                 type: type,
                 icon: icon,
+                color: color,
                 isActive: isActive,
               ),
           withReferenceMapper: (p0) => p0
