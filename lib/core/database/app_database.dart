@@ -9,6 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import 'tables/accounts.dart';
 import 'tables/categories.dart';
 import 'tables/transactions.dart';
+import 'tables/dues.dart';
+import 'tables/due_payments.dart';
 
 part 'app_database.g.dart';
 
@@ -17,16 +19,17 @@ part 'app_database.g.dart';
     Accounts,
     Categories,
     Transactions,
+    Dues,
+    DuePayments,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   // DATABASE MIGRATION
-
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -36,11 +39,26 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) {
             await m.addColumn(categories, categories.color);
           }
+
+          if (from < 3) {
+            await m.addColumn(
+              transactions,
+              transactions.paidAmountPaisa,
+            );
+
+            await m.createTable(dues);
+            await m.createTable(duePayments);
+
+            // Existing transactions were already fully paid.
+            await customStatement(
+              'UPDATE transactions '
+              'SET paid_amount_paisa = amount_paisa',
+            );
+          }
         },
       );
 
   // ACCOUNTS
-
   Stream<List<Account>> watchAccounts() {
     return select(accounts).watch();
   }
@@ -58,7 +76,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // CATEGORIES
-
   Stream<List<Category>> watchCategories({
     required String type,
   }) {
@@ -88,7 +105,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // TRANSACTIONS
-
   Stream<List<Transaction>> watchTransactions() {
     return (select(transactions)
           ..orderBy([
@@ -110,16 +126,35 @@ class AppDatabase extends _$AppDatabase {
         accountId: accountId,
         title: title,
         amountPaisa: amountPaisa,
+        paidAmountPaisa: Value(amountPaisa),
         type: type,
         date: date,
         note: Value(note),
       ),
     );
   }
+
+  // DUES
+  Stream<List<Due>> watchDues() {
+    return (select(dues)
+          ..orderBy([
+            (d) => OrderingTerm.desc(d.createdAt),
+          ]))
+        .watch();
+  }
+
+  // DUE PAYMENTS
+  Stream<List<DuePayment>> watchDuePayments(int dueId) {
+    return (select(duePayments)
+          ..where((p) => p.dueId.equals(dueId))
+          ..orderBy([
+            (p) => OrderingTerm.desc(p.date),
+          ]))
+        .watch();
+  }
 }
 
 // DATABASE CONNECTION
-
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final directory =
