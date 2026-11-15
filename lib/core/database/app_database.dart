@@ -11,6 +11,7 @@ import 'tables/categories.dart';
 import 'tables/transactions.dart';
 import 'tables/dues.dart';
 import 'tables/due_payments.dart';
+import 'tables/stores.dart';
 
 part 'app_database.g.dart';
 
@@ -21,13 +22,14 @@ part 'app_database.g.dart';
     Transactions,
     Dues,
     DuePayments,
+    Stores,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   // DATABASE MIGRATION
   @override
@@ -49,17 +51,19 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(dues);
             await m.createTable(duePayments);
 
-            // Existing transactions were already fully paid.
             await customStatement(
               'UPDATE transactions '
               'SET paid_amount_paisa = amount_paisa',
             );
           }
+
+          if (from < 4) {
+            await m.createTable(stores);
+          }
         },
       );
 
   // ACCOUNTS
-
   Stream<List<Account>> watchAccounts() {
     return select(accounts).watch();
   }
@@ -77,7 +81,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // CATEGORIES
-
   Stream<List<Category>> watchCategories({
     required String type,
   }) {
@@ -106,8 +109,34 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  // TRANSACTIONS
+  // STORES
+  Stream<List<Store>> watchStores() {
+    return (select(stores)
+          ..orderBy([
+            (s) => OrderingTerm.asc(s.name),
+          ]))
+        .watch();
+  }
 
+  Future<int> addStore({
+    required String name,
+    String? imagePath,
+    String? note,
+  }) {
+    if (name.trim().isEmpty) {
+      throw ArgumentError('Store name cannot be empty.');
+    }
+
+    return into(stores).insert(
+      StoresCompanion.insert(
+        name: name.trim(),
+        imagePath: Value(imagePath),
+        note: Value(note),
+      ),
+    );
+  }
+
+  // TRANSACTIONS
   Stream<List<Transaction>> watchTransactions() {
     return (select(transactions)
           ..orderBy([
@@ -138,7 +167,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // ADD PURCHASE WITH PARTIAL OR FULL DUE
-
   Future<int> addPurchaseWithDue({
     required int accountId,
     required String title,
@@ -168,7 +196,6 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
-      // Create a due record only when money remains unpaid.
       if (paidAmountPaisa < totalAmountPaisa) {
         await into(dues).insert(
           DuesCompanion.insert(
@@ -185,7 +212,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // DUES
-
   Stream<List<Due>> watchDues() {
     return (select(dues)
           ..orderBy([
@@ -195,7 +221,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // CALCULATE OUTSTANDING AMOUNT FOR A DUE
-
   Future<int> getOutstandingDue(int dueId) async {
     final due = await (select(dues)
           ..where((d) => d.id.equals(dueId)))
@@ -228,7 +253,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // DUE PAYMENTS
-
   Stream<List<DuePayment>> watchDuePayments(int dueId) {
     return (select(duePayments)
           ..where((p) => p.dueId.equals(dueId))
@@ -247,7 +271,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // ADD PAYMENT TOWARDS AN EXISTING DUE
-
   Future<void> addDuePayment({
     required int dueId,
     required int accountId,
@@ -317,7 +340,6 @@ class AppDatabase extends _$AppDatabase {
 }
 
 // DATABASE CONNECTION
-
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final directory =
