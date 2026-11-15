@@ -17,31 +17,31 @@ class _CategoriesPageState extends State<CategoriesPage>
   late final TabController _tabController;
 
   final List<Map<String, dynamic>> _colors = [
-    {'name': 'Orange', 'color': const Color(0xFFE58B42)},
-    {'name': 'Blue', 'color': const Color(0xFF478BCB)},
-    {'name': 'Purple', 'color': const Color(0xFFA36BCB)},
-    {'name': 'Green', 'color': const Color(0xFF4D9A78)},
-    {'name': 'Red', 'color': const Color(0xFFD65E70)},
-    {'name': 'Yellow', 'color': const Color(0xFFD19A32)},
-    {'name': 'Teal', 'color': const Color(0xFF4FA38D)},
-    {'name': 'Pink', 'color': const Color(0xFFE47CA5)},
+    {'name': 'Green', 'color': const Color(0xFF159447)},
+    {'name': 'Blue', 'color': const Color(0xFF087BC4)},
+    {'name': 'Pink', 'color': const Color(0xFFC2185B)},
+    {'name': 'Orange', 'color': const Color(0xFFE76B0A)},
+    {'name': 'Purple', 'color': const Color(0xFF9826A8)},
+    {'name': 'Yellow', 'color': const Color(0xFFE5A000)},
+    {'name': 'Teal', 'color': const Color(0xFF168F83)},
+    {'name': 'Red', 'color': const Color(0xFFD64545)},
   ];
 
   final List<Map<String, dynamic>> _icons = [
     {'name': 'Food', 'icon': Icons.restaurant},
     {'name': 'Transport', 'icon': Icons.directions_bus},
-    {'name': 'Shopping', 'icon': Icons.shopping_bag},
-    {'name': 'Housing', 'icon': Icons.home},
-    {'name': 'Health', 'icon': Icons.favorite},
-    {'name': 'Entertainment', 'icon': Icons.sports_esports},
-    {'name': 'Education', 'icon': Icons.school},
-    {'name': 'Bills', 'icon': Icons.receipt_long},
-    {'name': 'Travel', 'icon': Icons.flight},
-    {'name': 'Salary', 'icon': Icons.account_balance_wallet},
-    {'name': 'Business', 'icon': Icons.business_center},
+    {'name': 'Shopping', 'icon': Icons.shopping_bag_outlined},
+    {'name': 'Housing', 'icon': Icons.home_outlined},
+    {'name': 'Health', 'icon': Icons.monitor_heart_outlined},
+    {'name': 'Entertainment', 'icon': Icons.sports_esports_outlined},
+    {'name': 'Education', 'icon': Icons.school_outlined},
+    {'name': 'Bills', 'icon': Icons.receipt_long_outlined},
+    {'name': 'Travel', 'icon': Icons.flight_outlined},
+    {'name': 'Salary', 'icon': Icons.account_balance_wallet_outlined},
+    {'name': 'Business', 'icon': Icons.business_center_outlined},
     {'name': 'Investment', 'icon': Icons.trending_up},
     {'name': 'Gift', 'icon': Icons.card_giftcard},
-    {'name': 'Other', 'icon': Icons.category},
+    {'name': 'Other', 'icon': Icons.category_outlined},
   ];
 
   @override
@@ -61,10 +61,14 @@ class _CategoriesPageState extends State<CategoriesPage>
     return Color(int.parse('FF$hex', radix: 16));
   }
 
+  Color _backgroundColor(Color color) {
+    return Color.lerp(Colors.white, color, 0.12)!;
+  }
+
   IconData _getIcon(String name) {
     final item = _icons.firstWhere(
       (item) => item['name'] == name,
-      orElse: () => {'icon': Icons.category},
+      orElse: () => {'icon': Icons.category_outlined},
     );
 
     return item['icon'] as IconData;
@@ -73,7 +77,7 @@ class _CategoriesPageState extends State<CategoriesPage>
   void _showAddCategoryDialog(String type) {
     final nameController = TextEditingController();
     String selectedIcon = 'Other';
-    Color selectedColor = const Color(0xFF4FA38D);
+    Color selectedColor = const Color(0xFF168F83);
 
     showDialog(
       context: context,
@@ -291,9 +295,7 @@ class _CategoriesPageState extends State<CategoriesPage>
                 const SizedBox(height: 8),
                 const Text(
                   'Tap + to add your first category',
-                  style: TextStyle(
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(color: Colors.grey),
                 ),
               ],
             ),
@@ -316,38 +318,36 @@ class _CategoriesPageState extends State<CategoriesPage>
 
             return Container(
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.grey.shade200,
-                ),
+                color: _backgroundColor(color),
+                borderRadius: BorderRadius.circular(22),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // FULL-COLOR ICON WITHOUT CIRCULAR BACKGROUND
-                  Icon(
-                    _getIcon(category.icon),
-                    color: color,
-                    size: 42,
-                  ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 5,
+                  vertical: 12,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _getIcon(category.icon),
+                      color: color,
+                      size: 43,
                     ),
-                    child: Text(
+                    const SizedBox(height: 12),
+                    Text(
                       category.name,
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF171717),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -359,7 +359,7 @@ class _CategoriesPageState extends State<CategoriesPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9F2),
+      backgroundColor: const Color(0xFFFCFCFC),
       appBar: AppBar(
         title: const Text(
           'Categories',
