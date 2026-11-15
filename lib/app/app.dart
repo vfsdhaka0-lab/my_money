@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../features/accounts/accounts_page.dart';
 import '../features/transactions/transactions_page.dart';
+import 'theme.dart';
 
 class MyMoneyApp extends StatelessWidget {
   const MyMoneyApp({super.key});
@@ -11,10 +12,7 @@ class MyMoneyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'MyMoney',
-      theme: ThemeData(
-        colorSchemeSeed: Colors.green,
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
       home: const HomePage(),
     );
   }
