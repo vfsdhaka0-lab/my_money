@@ -1,4 +1,6 @@
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 import '../../shared/database_instance.dart';
@@ -127,7 +129,9 @@ class _CategoriesPageState extends State<CategoriesPage>
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: isSelected
-                                    ? Theme.of(context).colorScheme.primary
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .primary
                                     : Colors.transparent,
                               ),
                             ),
