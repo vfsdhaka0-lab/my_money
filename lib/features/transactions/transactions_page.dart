@@ -12,6 +12,11 @@ class TransactionsPage extends StatelessWidget {
 
   Future<void> _addTransaction(BuildContext context) async {
     final accounts = await database.watchAccounts().first;
+    final expenseCategories =
+        await database.watchCategories(type: 'Expense').first;
+    final incomeCategories =
+        await database.watchCategories(type: 'Income').first;
+    final stores = await database.watchStores().first;
 
     if (!context.mounted) return;
 
@@ -27,12 +32,15 @@ class TransactionsPage extends StatelessWidget {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
     final paidController = TextEditingController();
-    final storeController = TextEditingController();
     final noteController = TextEditingController();
 
     String selectedType = 'expense';
     String paymentStatus = 'paid';
+
     int selectedAccountId = accounts.first.id;
+    int? selectedCategoryId;
+    int? selectedStoreId;
+
     DateTime selectedDate = DateTime.now();
     bool isSaving = false;
 
@@ -46,6 +54,20 @@ class TransactionsPage extends StatelessWidget {
             final isDuePurchase =
                 selectedType == 'expense' &&
                 paymentStatus != 'paid';
+
+            final availableCategories =
+                selectedType == 'expense'
+                    ? expenseCategories
+                    : incomeCategories;
+
+            final selectedCategoryExists =
+                availableCategories.any(
+              (category) => category.id == selectedCategoryId,
+            );
+
+            final selectedStoreExists = stores.any(
+              (store) => store.id == selectedStoreId,
+            );
 
             return SafeArea(
               child: SingleChildScrollView(
@@ -96,8 +118,42 @@ class TransactionsPage extends StatelessWidget {
                               setModalState(() {
                                 selectedType = value;
                                 paymentStatus = 'paid';
+                                selectedCategoryId = null;
+                                selectedStoreId = null;
                                 paidController.clear();
-                                storeController.clear();
+                              });
+                            },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // CATEGORY
+
+                    DropdownButtonFormField<int?>(
+                      value: selectedCategoryExists
+                          ? selectedCategoryId
+                          : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Category (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('No category'),
+                        ),
+                        ...availableCategories.map((category) {
+                          return DropdownMenuItem<int?>(
+                            value: category.id,
+                            child: Text(category.name),
+                          );
+                        }),
+                      ],
+                      onChanged: isSaving
+                          ? null
+                          : (value) {
+                              setModalState(() {
+                                selectedCategoryId = value;
                               });
                             },
                     ),
@@ -108,6 +164,7 @@ class TransactionsPage extends StatelessWidget {
 
                     TextField(
                       controller: titleController,
+                      enabled: !isSaving,
                       decoration: const InputDecoration(
                         labelText: 'Title',
                         hintText: 'e.g. Grocery shopping',
@@ -121,6 +178,7 @@ class TransactionsPage extends StatelessWidget {
 
                     TextField(
                       controller: amountController,
+                      enabled: !isSaving,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'Amount (taka)',
@@ -198,32 +256,68 @@ class TransactionsPage extends StatelessWidget {
                                 setModalState(() {
                                   paymentStatus = value;
                                   paidController.clear();
+                                  selectedStoreId = null;
                                 });
                               },
                       ),
 
-                      // STORE NAME FOR DUE PURCHASES
+                      // STORE SELECTION FOR DUE PURCHASES
 
                       if (isDuePurchase) ...[
                         const SizedBox(height: 16),
 
-                        TextField(
-                          controller: storeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Store name',
-                            hintText: 'e.g. Rahim Store',
-                            border: OutlineInputBorder(),
+                        if (stores.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(
+                                alpha: 0.10,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'No stores available. Please add a store '
+                              'from Categories & Stores first.',
+                              style: TextStyle(
+                                color: Colors.deepOrange,
+                                fontSize: 13,
+                              ),
+                            ),
+                          )
+                        else
+                          DropdownButtonFormField<int>(
+                            value: selectedStoreExists
+                                ? selectedStoreId
+                                : null,
+                            decoration: const InputDecoration(
+                              labelText: 'Select store',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: stores.map((store) {
+                              return DropdownMenuItem<int>(
+                                value: store.id,
+                                child: Text(store.name),
+                              );
+                            }).toList(),
+                            onChanged: isSaving
+                                ? null
+                                : (value) {
+                                    setModalState(() {
+                                      selectedStoreId = value;
+                                    });
+                                  },
                           ),
-                        ),
                       ],
 
-                      // PAID AMOUNT ONLY FOR PARTIAL PAYMENT
+                      // PAID AMOUNT FOR PARTIAL PAYMENT
 
                       if (paymentStatus == 'partial') ...[
                         const SizedBox(height: 16),
 
                         TextField(
                           controller: paidController,
+                          enabled: !isSaving,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
                             labelText: 'Paid immediately (taka)',
@@ -282,6 +376,7 @@ class TransactionsPage extends StatelessWidget {
 
                     TextField(
                       controller: noteController,
+                      enabled: !isSaving,
                       maxLines: 2,
                       decoration: const InputDecoration(
                         labelText: 'Note (optional)',
@@ -350,12 +445,12 @@ class TransactionsPage extends StatelessWidget {
                                 }
 
                                 if (isDuePurchase &&
-                                    storeController.text.trim().isEmpty) {
+                                    selectedStoreId == null) {
                                   ScaffoldMessenger.of(context)
                                       .showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Enter the store name.',
+                                        'Please select a store.',
                                       ),
                                     ),
                                   );
@@ -368,13 +463,19 @@ class TransactionsPage extends StatelessWidget {
 
                                 try {
                                   if (isDuePurchase) {
+                                    final selectedStore = stores
+                                        .firstWhere(
+                                      (store) =>
+                                          store.id == selectedStoreId,
+                                    );
+
                                     await database.addPurchaseWithDue(
                                       accountId: selectedAccountId,
                                       title: title,
                                       totalAmountPaisa: totalPaisa,
                                       paidAmountPaisa: paidPaisa,
-                                      storeName:
-                                          storeController.text.trim(),
+                                      storeName: selectedStore.name,
+                                      categoryId: selectedCategoryId,
                                       date: selectedDate,
                                       note: noteController.text
                                               .trim()
@@ -388,6 +489,7 @@ class TransactionsPage extends StatelessWidget {
                                       title: title,
                                       amountPaisa: totalPaisa,
                                       type: selectedType,
+                                      categoryId: selectedCategoryId,
                                       date: selectedDate,
                                       note: noteController.text
                                               .trim()
@@ -440,7 +542,6 @@ class TransactionsPage extends StatelessWidget {
     titleController.dispose();
     amountController.dispose();
     paidController.dispose();
-    storeController.dispose();
     noteController.dispose();
   }
 
@@ -453,6 +554,12 @@ class TransactionsPage extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text('Could not load transactions.'),
             );
           }
 
@@ -529,8 +636,6 @@ class TransactionsPage extends StatelessWidget {
           );
         },
       ),
-
-      // ADD TRANSACTION BUTTON
 
       floatingActionButton: FloatingActionButton(
         shape: const CircleBorder(),
