@@ -1,4 +1,6 @@
-// ignore_for_file: deprecated_member_use
+
+ // ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 import '../../core/database/app_database.dart';
@@ -69,6 +71,7 @@ class TransactionsPage extends StatelessWidget {
                     const SizedBox(height: 20),
 
                     // TRANSACTION TYPE
+
                     DropdownButtonFormField<String>(
                       value: selectedType,
                       decoration: const InputDecoration(
@@ -102,6 +105,7 @@ class TransactionsPage extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // TITLE
+
                     TextField(
                       controller: titleController,
                       decoration: const InputDecoration(
@@ -114,6 +118,7 @@ class TransactionsPage extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // AMOUNT
+
                     TextField(
                       controller: amountController,
                       keyboardType: TextInputType.number,
@@ -127,6 +132,7 @@ class TransactionsPage extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // ACCOUNT
+
                     DropdownButtonFormField<int>(
                       value: selectedAccountId,
                       decoration: const InputDecoration(
@@ -151,6 +157,7 @@ class TransactionsPage extends StatelessWidget {
                     ),
 
                     // PAYMENT STATUS FOR EXPENSES
+
                     if (selectedType == 'expense') ...[
                       const SizedBox(height: 20),
 
@@ -196,6 +203,7 @@ class TransactionsPage extends StatelessWidget {
                       ),
 
                       // STORE NAME FOR DUE PURCHASES
+
                       if (isDuePurchase) ...[
                         const SizedBox(height: 16),
 
@@ -210,6 +218,7 @@ class TransactionsPage extends StatelessWidget {
                       ],
 
                       // PAID AMOUNT ONLY FOR PARTIAL PAYMENT
+
                       if (paymentStatus == 'partial') ...[
                         const SizedBox(height: 16),
 
@@ -241,6 +250,7 @@ class TransactionsPage extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // DATE
+
                     OutlinedButton.icon(
                       onPressed: isSaving
                           ? null
@@ -269,6 +279,7 @@ class TransactionsPage extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // NOTE
+
                     TextField(
                       controller: noteController,
                       maxLines: 2,
@@ -281,6 +292,7 @@ class TransactionsPage extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // SAVE BUTTON
+
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -435,9 +447,6 @@ class TransactionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transactions'),
-      ),
       body: StreamBuilder<List<Transaction>>(
         stream: database.watchTransactions(),
         builder: (context, snapshot) {
@@ -520,6 +529,9 @@ class TransactionsPage extends StatelessWidget {
           );
         },
       ),
+
+      // ADD TRANSACTION BUTTON
+
       floatingActionButton: FloatingActionButton(
         shape: const CircleBorder(),
         onPressed: () => _addTransaction(context),
