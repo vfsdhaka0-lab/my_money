@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:googleapis/common.dart' show Media;
 import 'package:googleapis/drive/v3.dart' as drive;
 
 import 'google_drive_auth.dart';
@@ -31,7 +30,7 @@ class GoogleDriveService {
         $fields: 'files(id,name,modifiedTime)',
       );
 
-      final media = Media(
+      final media = drive.Media(
         backupFile.openRead(),
         await backupFile.length(),
         contentType: 'application/zip',
