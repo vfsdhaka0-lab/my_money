@@ -694,9 +694,33 @@ class _CategoriesPageState extends State<CategoriesPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Categories & Stores'),
+        backgroundColor: const Color(0xFF4FA38D),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          'Categories & Stores',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         bottom: TabBar(
           controller: _tabController,
+          dividerColor: Colors.transparent,
+          indicatorColor: const Color(0xFFFFB900),
+          indicatorWeight: 4,
+          indicatorSize: TabBarIndicatorSize.label,
+          labelColor: Colors.white,
+          labelStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+          unselectedLabelColor: Colors.white70,
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
           tabs: const [
             Tab(text: 'Expense'),
             Tab(text: 'Income'),
