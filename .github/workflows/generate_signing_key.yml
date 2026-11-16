@@ -18,7 +18,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Generate signing key
+      - name: Generate permanent signing key
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           keytool -genkeypair \
             -v \
@@ -27,19 +29,21 @@ jobs:
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD || 'TemporaryPass123!' }}" \
-            -keypass "${{ secrets.KEYSTORE_PASSWORD || 'TemporaryPass123!' }}" \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -keypass "$KEYSTORE_PASSWORD" \
             -dname "CN=MyMoney, OU=App, O=MyMoney, L=Dhaka, ST=Dhaka, C=BD"
 
-      - name: Get SHA-1 fingerprint
+      - name: Display SHA-1 fingerprint
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           keytool -list -v \
             -keystore mymoney-release.jks \
             -alias mymoney \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD || 'TemporaryPass123!' }}" \
-            | grep SHA1
+            -storepass "$KEYSTORE_PASSWORD" \
+            | grep -E "SHA1:|SHA-1:"
 
-      - name: Upload signing key
+      - name: Upload permanent signing key
         uses: actions/upload-artifact@v4
         with:
           name: mymoney-signing-key
