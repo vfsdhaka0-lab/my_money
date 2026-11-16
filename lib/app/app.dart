@@ -31,23 +31,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey =
+      GlobalKey<ScaffoldState>();
+
   int selectedIndex = 0;
 
   static const Color primary = Color(0xFF4FA38D);
-
-  final List<Widget> pages = const [
-    AccountsPage(),
-    TransactionsPage(),
-    CategoriesPage(),
-    DuesPage(),
-  ];
-
-  final List<String> pageTitles = const [
-    'Accounts',
-    'Transactions',
-    'Categories & Stores',
-    'Due Management',
-  ];
 
   void selectPage(int index) {
     setState(() {
@@ -57,30 +46,44 @@ class _HomePageState extends State<HomePage> {
     Navigator.pop(context);
   }
 
+  void _openDrawer() {
+    _scaffoldKey.currentState?.openDrawer();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: primary,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(30),
-          ),
-        ),
-        title: Text(
-          pageTitles[selectedIndex],
-          style: const TextStyle(
-            fontSize: 21,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
+    final pageTitles = [
+      'Accounts',
+      'Transactions',
+      'Categories & Stores',
+      'Due Management',
+    ];
 
-      // SHARED APP DRAWER
+    return Scaffold(
+      key: _scaffoldKey,
+
+      // Categories & Stores has its own AppBar.
+      appBar: selectedIndex == 2
+          ? null
+          : AppBar(
+              backgroundColor: primary,
+              foregroundColor: Colors.white,
+              centerTitle: true,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(30),
+                ),
+              ),
+              title: Text(
+                pageTitles[selectedIndex],
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
 
       drawer: Drawer(
         child: ListView(
@@ -102,7 +105,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-
             ListTile(
               leading: const Icon(
                 Icons.account_balance_wallet_outlined,
@@ -111,23 +113,19 @@ class _HomePageState extends State<HomePage> {
               selected: selectedIndex == 0,
               onTap: () => selectPage(0),
             ),
-
             ListTile(
               leading: const Icon(Icons.receipt_long_outlined),
               title: const Text('Transactions'),
               selected: selectedIndex == 1,
               onTap: () => selectPage(1),
             ),
-
             const Divider(),
-
             ListTile(
               leading: const Icon(Icons.category_outlined),
               title: const Text('Categories & Stores'),
               selected: selectedIndex == 2,
               onTap: () => selectPage(2),
             ),
-
             ListTile(
               leading: const Icon(Icons.receipt_outlined),
               title: const Text('Due Management'),
@@ -140,10 +138,15 @@ class _HomePageState extends State<HomePage> {
 
       body: IndexedStack(
         index: selectedIndex,
-        children: pages,
+        children: [
+          const AccountsPage(),
+          const TransactionsPage(),
+          CategoriesPage(
+            onMenuPressed: _openDrawer,
+          ),
+          const DuesPage(),
+        ],
       ),
-
-      // BOTTOM NAVIGATION
 
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex < 2 ? selectedIndex : 0,
