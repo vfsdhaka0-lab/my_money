@@ -7,6 +7,7 @@ import '../features/accounts/accounts_page.dart';
 import '../features/transactions/transactions_page.dart';
 import '../features/categories/categories_page.dart';
 import '../features/dues/dues_page.dart';
+import '../features/backup/backup_page.dart';
 import 'theme.dart';
 
 class MyMoneyApp extends StatelessWidget {
@@ -62,8 +63,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       key: _scaffoldKey,
 
-      // Categories & Stores has its own AppBar.
-      appBar: selectedIndex == 2
+      appBar: selectedIndex == 2 || selectedIndex == 4
           ? null
           : AppBar(
               backgroundColor: primary,
@@ -132,6 +132,13 @@ class _HomePageState extends State<HomePage> {
               selected: selectedIndex == 3,
               onTap: () => selectPage(3),
             ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.cloud_sync_outlined),
+              title: const Text('Backup & Restore'),
+              selected: selectedIndex == 4,
+              onTap: () => selectPage(4),
+            ),
           ],
         ),
       ),
@@ -145,6 +152,7 @@ class _HomePageState extends State<HomePage> {
             onMenuPressed: _openDrawer,
           ),
           const DuesPage(),
+          const BackupPage(),
         ],
       ),
 
