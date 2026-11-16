@@ -1,4 +1,6 @@
+import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:googleapis_auth/auth_io.dart' show AuthClient;
 
 import 'backup_config.dart';
 
@@ -28,12 +30,6 @@ class GoogleDriveAuth {
   Future<GoogleSignInAccount> signIn() async {
     await initialize();
 
-    if (!_googleSignIn.supportsAuthenticate()) {
-      throw UnsupportedError(
-        'Google Sign-In is not supported on this platform.',
-      );
-    }
-
     final account = await _googleSignIn.authenticate();
 
     _currentUser = account;
@@ -41,22 +37,18 @@ class GoogleDriveAuth {
     return account;
   }
 
-  Future<String> getAccessToken() async {
+  Future<AuthClient> getAuthenticatedClient() async {
     await initialize();
 
     final account = _currentUser ?? await signIn();
 
-    final authorization =
-        await account.authorizationClient.authorizationForScopes(
-      [BackupConfig.driveScope],
-    );
+    final scopes = [BackupConfig.driveScope];
 
-    final result = authorization ??
-        await account.authorizationClient.authorizeScopes(
-          [BackupConfig.driveScope],
-        );
+    final authorization = await account.authorizationClient
+        .authorizationForScopes(scopes) ??
+        await account.authorizationClient.authorizeScopes(scopes);
 
-    return result.accessToken;
+    return authorization.authClient(scopes: scopes);
   }
 
   Future<void> signOut() async {
