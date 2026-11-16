@@ -1,5 +1,5 @@
 
-// ignore_for_file: deprecated_member_use
+ // ignore_for_file: deprecated_member_use
 
 import 'dart:io';
 
@@ -693,47 +693,43 @@ class _CategoriesPageState extends State<CategoriesPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF4FA38D),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Text(
-          'Categories & Stores',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          dividerColor: Colors.transparent,
-          indicatorColor: const Color(0xFFFFB900),
-          indicatorWeight: 4,
-          indicatorSize: TabBarIndicatorSize.label,
-          labelColor: Colors.white,
-          labelStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-          unselectedLabelColor: Colors.white70,
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          tabs: const [
-            Tab(text: 'Expense'),
-            Tab(text: 'Income'),
-            Tab(text: 'Stores'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildCategoryTab('Expense'),
-          _buildCategoryTab('Income'),
-          _buildStoresTab(),
+          Material(
+            color: const Color(0xFF4FA38D),
+            child: TabBar(
+              controller: _tabController,
+              dividerColor: Colors.transparent,
+              indicatorColor: const Color(0xFFFFB900),
+              indicatorWeight: 4,
+              indicatorSize: TabBarIndicatorSize.label,
+              labelColor: Colors.white,
+              labelStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+              unselectedLabelColor: Colors.white70,
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              tabs: const [
+                Tab(text: 'Expense'),
+                Tab(text: 'Income'),
+                Tab(text: 'Stores'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildCategoryTab('Expense'),
+                _buildCategoryTab('Income'),
+                _buildStoresTab(),
+              ],
+            ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
