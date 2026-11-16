@@ -11,7 +11,12 @@ import 'package:path_provider/path_provider.dart';
 import '../../shared/database_instance.dart';
 
 class CategoriesPage extends StatefulWidget {
-  const CategoriesPage({super.key});
+  final VoidCallback? onMenuPressed;
+
+  const CategoriesPage({
+    super.key,
+    this.onMenuPressed,
+  });
 
   @override
   State<CategoriesPage> createState() => _CategoriesPageState();
@@ -22,6 +27,9 @@ class _CategoriesPageState extends State<CategoriesPage>
   late final TabController _tabController;
 
   final ImagePicker _imagePicker = ImagePicker();
+
+  static const Color primary = Color(0xFF4FA38D);
+  static const Color accent = Color(0xFFFFB900);
 
   final List<Map<String, dynamic>> _icons = [
     {'name': 'Food', 'icon': Icons.restaurant},
@@ -77,7 +85,7 @@ class _CategoriesPageState extends State<CategoriesPage>
       final value = hex.replaceFirst('#', '');
       return Color(int.parse('FF$value', radix: 16));
     } catch (_) {
-      return const Color(0xFF4FA38D);
+      return primary;
     }
   }
 
@@ -693,43 +701,61 @@ class _CategoriesPageState extends State<CategoriesPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      appBar: AppBar(
+        backgroundColor: primary,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 64,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(30),
+          ),
+        ),
+        leading: IconButton(
+          onPressed: widget.onMenuPressed,
+          icon: const Icon(Icons.menu),
+        ),
+        title: const Text(
+          'Categories & Stores',
+          style: TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: TabBar(
+            controller: _tabController,
+            dividerColor: Colors.transparent,
+            indicatorColor: accent,
+            indicatorWeight: 4,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelColor: Colors.white,
+            labelStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+            unselectedLabelColor: Colors.white70,
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            tabs: const [
+              Tab(text: 'Expense'),
+              Tab(text: 'Income'),
+              Tab(text: 'Stores'),
+            ],
+          ),
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          Material(
-            color: const Color(0xFF4FA38D),
-            child: TabBar(
-              controller: _tabController,
-              dividerColor: Colors.transparent,
-              indicatorColor: const Color(0xFFFFB900),
-              indicatorWeight: 4,
-              indicatorSize: TabBarIndicatorSize.label,
-              labelColor: Colors.white,
-              labelStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-              unselectedLabelColor: Colors.white70,
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-              tabs: const [
-                Tab(text: 'Expense'),
-                Tab(text: 'Income'),
-                Tab(text: 'Stores'),
-              ],
-            ),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildCategoryTab('Expense'),
-                _buildCategoryTab('Income'),
-                _buildStoresTab(),
-              ],
-            ),
-          ),
+          _buildCategoryTab('Expense'),
+          _buildCategoryTab('Income'),
+          _buildStoresTab(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
