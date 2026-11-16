@@ -7,6 +7,8 @@ import '../../shared/database_instance.dart';
 import '../../core/database/app_database.dart';
 import '../../core/utils/money_formatter.dart';
 import '../transactions/transactions_page.dart';
+import '../categories/categories_page.dart';
+import '../dues/dues_page.dart';
 
 class AccountsPage extends StatelessWidget {
   const AccountsPage({super.key});
@@ -220,13 +222,21 @@ class AccountsPage extends StatelessWidget {
                 ),
               ),
             ),
+
+            // ACCOUNTS
+
             ListTile(
               leading: const Icon(
                 Icons.account_balance_wallet,
               ),
               title: const Text('Accounts'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+              },
             ),
+
+            // TRANSACTIONS
+
             ListTile(
               leading: const Icon(Icons.receipt_long),
               title: const Text('Transactions'),
@@ -236,6 +246,40 @@ class AccountsPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const TransactionsPage(),
+                  ),
+                );
+              },
+            ),
+
+            const Divider(),
+
+            // CATEGORIES AND STORES
+
+            ListTile(
+              leading: const Icon(Icons.category_outlined),
+              title: const Text('Categories & Stores'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CategoriesPage(),
+                  ),
+                );
+              },
+            ),
+
+            // DUE MANAGEMENT
+
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Due Management'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DuesPage(),
                   ),
                 );
               },
