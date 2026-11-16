@@ -151,11 +151,13 @@ class AppDatabase extends _$AppDatabase {
     required int amountPaisa,
     required String type,
     required DateTime date,
+    int? categoryId,
     String? note,
   }) {
     return into(transactions).insert(
       TransactionsCompanion.insert(
         accountId: accountId,
+        categoryId: Value(categoryId),
         title: title,
         amountPaisa: amountPaisa,
         paidAmountPaisa: Value(amountPaisa),
@@ -174,6 +176,7 @@ class AppDatabase extends _$AppDatabase {
     required int paidAmountPaisa,
     required String storeName,
     required DateTime date,
+    int? categoryId,
     String? note,
   }) async {
     if (totalAmountPaisa <= 0 ||
@@ -187,6 +190,7 @@ class AppDatabase extends _$AppDatabase {
       final transactionId = await into(transactions).insert(
         TransactionsCompanion.insert(
           accountId: accountId,
+          categoryId: Value(categoryId),
           title: title,
           amountPaisa: totalAmountPaisa,
           paidAmountPaisa: Value(paidAmountPaisa),
