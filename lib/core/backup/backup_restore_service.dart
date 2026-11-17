@@ -1,6 +1,8 @@
+
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:drift/drift.dart' show Variable, UpdateKind;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -51,7 +53,6 @@ class BackupRestoreService {
       final appDirectory =
           await getApplicationDocumentsDirectory();
 
-      // Restore store images without deleting existing images.
       final sourceImages = Directory(
         p.join(restoreDirectory.path, 'store_images'),
       );
@@ -81,7 +82,6 @@ class BackupRestoreService {
         }
       }
 
-      // Attach the downloaded database.
       await database.customStatement(
         'ATTACH DATABASE ? AS backup_db',
         [snapshotFile.path],
@@ -89,48 +89,76 @@ class BackupRestoreService {
 
       try {
         await database.transaction(() async {
-          // Remove existing records in child-first order.
-          await database.customStatement(
+          // Delete existing records.
+          await database.customUpdate(
             'DELETE FROM due_payments',
+            updates: {database.duePayments},
+            updateKind: UpdateKind.delete,
           );
-          await database.customStatement(
+
+          await database.customUpdate(
             'DELETE FROM dues',
+            updates: {database.dues},
+            updateKind: UpdateKind.delete,
           );
-          await database.customStatement(
+
+          await database.customUpdate(
             'DELETE FROM transactions',
+            updates: {database.transactions},
+            updateKind: UpdateKind.delete,
           );
-          await database.customStatement(
+
+          await database.customUpdate(
             'DELETE FROM categories',
+            updates: {database.categories},
+            updateKind: UpdateKind.delete,
           );
-          await database.customStatement(
+
+          await database.customUpdate(
             'DELETE FROM stores',
+            updates: {database.stores},
+            updateKind: UpdateKind.delete,
           );
-          await database.customStatement(
+
+          await database.customUpdate(
             'DELETE FROM accounts',
+            updates: {database.accounts},
+            updateKind: UpdateKind.delete,
           );
 
-          // Restore records in parent-first order.
-          await database.customStatement(
+          // Restore saved records.
+          await database.customInsert(
             'INSERT INTO accounts SELECT * FROM backup_db.accounts',
-          );
-          await database.customStatement(
-            'INSERT INTO categories SELECT * FROM backup_db.categories',
-          );
-          await database.customStatement(
-            'INSERT INTO stores SELECT * FROM backup_db.stores',
-          );
-          await database.customStatement(
-            'INSERT INTO transactions SELECT * FROM backup_db.transactions',
-          );
-          await database.customStatement(
-            'INSERT INTO dues SELECT * FROM backup_db.dues',
-          );
-          await database.customStatement(
-            'INSERT INTO due_payments SELECT * FROM backup_db.due_payments',
+            updates: {database.accounts},
           );
 
-          // Update saved image paths for this installation.
-          await database.customStatement(
+          await database.customInsert(
+            'INSERT INTO categories SELECT * FROM backup_db.categories',
+            updates: {database.categories},
+          );
+
+          await database.customInsert(
+            'INSERT INTO stores SELECT * FROM backup_db.stores',
+            updates: {database.stores},
+          );
+
+          await database.customInsert(
+            'INSERT INTO transactions SELECT * FROM backup_db.transactions',
+            updates: {database.transactions},
+          );
+
+          await database.customInsert(
+            'INSERT INTO dues SELECT * FROM backup_db.dues',
+            updates: {database.dues},
+          );
+
+          await database.customInsert(
+            'INSERT INTO due_payments SELECT * FROM backup_db.due_payments',
+            updates: {database.duePayments},
+          );
+
+          // Correct image paths for this installation.
+          await database.customUpdate(
             '''
             UPDATE stores
             SET image_path = ? || '/' ||
@@ -142,7 +170,11 @@ class BackupRestoreService {
             WHERE image_path IS NOT NULL
               AND instr(image_path, '/store_images/') > 0
             ''',
-            [destinationImages.path],
+            variables: [
+              Variable.withString(destinationImages.path),
+            ],
+            updates: {database.stores},
+            updateKind: UpdateKind.update,
           );
         });
       } finally {
