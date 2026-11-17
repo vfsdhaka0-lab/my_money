@@ -1,3 +1,4 @@
+
 import 'dart:io';
 
 import 'package:googleapis/drive/v3.dart' as drive;
@@ -14,13 +15,18 @@ class GoogleDriveService {
 
   static const String backupFileName = 'mymoney_backup.zip';
 
-  Future<void> uploadBackup(File backupFile) async {
+  Future<void> uploadBackup(
+    File backupFile, {
+    bool allowInteraction = true,
+  }) async {
     if (!await backupFile.exists()) {
       throw Exception('Backup file does not exist.');
     }
 
     final client =
-        await GoogleDriveAuth.instance.getAuthenticatedClient();
+        await GoogleDriveAuth.instance.getAuthenticatedClient(
+      allowInteraction: allowInteraction,
+    );
 
     try {
       final driveApi = drive.DriveApi(client);
