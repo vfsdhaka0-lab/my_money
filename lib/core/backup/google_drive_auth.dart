@@ -38,18 +38,55 @@ class GoogleDriveAuth {
     return account;
   }
 
-  Future<AuthClient> getAuthenticatedClient() async {
+  Future<GoogleSignInAccount?> tryRestoreSignIn() async {
     await initialize();
 
-    final account = _currentUser ?? await signIn();
+    if (_currentUser != null) {
+      return _currentUser;
+    }
+
+    _currentUser =
+        await _googleSignIn.attemptLightweightAuthentication();
+
+    return _currentUser;
+  }
+
+  Future<AuthClient> getAuthenticatedClient({
+    bool allowInteraction = true,
+  }) async {
+    await initialize();
+
+    final account = await tryRestoreSignIn();
+
+    if (account == null) {
+      if (!allowInteraction) {
+        throw StateError(
+          'Google sign-in is required for automatic backup.',
+        );
+      }
+
+      await signIn();
+    }
+
+    final currentAccount = _currentUser!;
 
     final scopes = [BackupConfig.driveScope];
 
-    final authorization =
-        await account.authorizationClient.authorizationForScopes(
-      scopes,
-    ) ??
-        await account.authorizationClient.authorizeScopes(scopes);
+    var authorization =
+        await currentAccount.authorizationClient
+            .authorizationForScopes(scopes);
+
+    if (authorization == null) {
+      if (!allowInteraction) {
+        throw StateError(
+          'Google Drive permission is required.',
+        );
+      }
+
+      authorization =
+          await currentAccount.authorizationClient
+              .authorizeScopes(scopes);
+    }
 
     return authorization.authClient(scopes: scopes);
   }
