@@ -1,7 +1,9 @@
 // ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 import '../../core/backup/backup_manager.dart';
+import '../../core/backup/backup_restore_service.dart';
 import '../../core/backup/google_drive_auth.dart';
 
 class BackupPage extends StatefulWidget {
@@ -13,6 +15,7 @@ class BackupPage extends StatefulWidget {
 
 class _BackupPageState extends State<BackupPage> {
   bool _isLoading = false;
+
   String _status = 'Your data has not been backed up yet.';
 
   Future<void> _connectAndBackup() async {
@@ -50,10 +53,77 @@ class _BackupPageState extends State<BackupPage> {
       setState(() {
         _status = 'Backup failed: $e';
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _restoreBackup() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Restore backup?'),
+          content: const Text(
+            'This will replace all current MyMoney records '
+            'with the records saved in Google Drive.\n\n'
+            'Please make sure you have backed up your '
+            'current data before continuing.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Restore'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _status = 'Downloading backup from Google Drive...';
+    });
+
+    try {
+      await BackupRestoreService.instance.restoreFromGoogleDrive();
+
+      if (!mounted) return;
+
+      setState(() {
+        _status = 'Your data was restored successfully!';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('MyMoney data restored successfully.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _status = 'Restore failed: $e';
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Backup failed: $e'),
+          content: Text('Restore failed: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -79,7 +149,7 @@ class _BackupPageState extends State<BackupPage> {
           children: [
             const SizedBox(height: 30),
             const Icon(
-              Icons.cloud_upload_outlined,
+              Icons.cloud_sync_outlined,
               size: 80,
               color: Colors.green,
             ),
@@ -123,6 +193,12 @@ class _BackupPageState extends State<BackupPage> {
               label: Text(
                 _isLoading ? 'Please wait...' : 'Backup Now',
               ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _isLoading ? null : _restoreBackup,
+              icon: const Icon(Icons.cloud_download_outlined),
+              label: const Text('Restore from Google Drive'),
             ),
           ],
         ),
