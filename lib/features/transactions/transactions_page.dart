@@ -1,5 +1,5 @@
 
- // ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 
@@ -89,11 +89,9 @@ class TransactionsPage extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-
                     const SizedBox(height: 20),
 
                     // TRANSACTION TYPE
-
                     DropdownButtonFormField<String>(
                       value: selectedType,
                       decoration: const InputDecoration(
@@ -124,11 +122,9 @@ class TransactionsPage extends StatelessWidget {
                               });
                             },
                     ),
-
                     const SizedBox(height: 16),
 
                     // CATEGORY
-
                     DropdownButtonFormField<int?>(
                       value: selectedCategoryExists
                           ? selectedCategoryId
@@ -157,11 +153,9 @@ class TransactionsPage extends StatelessWidget {
                               });
                             },
                     ),
-
                     const SizedBox(height: 16),
 
                     // TITLE
-
                     TextField(
                       controller: titleController,
                       enabled: !isSaving,
@@ -171,11 +165,9 @@ class TransactionsPage extends StatelessWidget {
                         border: OutlineInputBorder(),
                       ),
                     ),
-
                     const SizedBox(height: 16),
 
                     // AMOUNT
-
                     TextField(
                       controller: amountController,
                       enabled: !isSaving,
@@ -186,11 +178,9 @@ class TransactionsPage extends StatelessWidget {
                         border: OutlineInputBorder(),
                       ),
                     ),
-
                     const SizedBox(height: 16),
 
                     // ACCOUNT
-
                     DropdownButtonFormField<int>(
                       value: selectedAccountId,
                       decoration: const InputDecoration(
@@ -215,10 +205,8 @@ class TransactionsPage extends StatelessWidget {
                     ),
 
                     // PAYMENT STATUS FOR EXPENSES
-
                     if (selectedType == 'expense') ...[
                       const SizedBox(height: 20),
-
                       const Text(
                         'Payment status',
                         style: TextStyle(
@@ -226,9 +214,7 @@ class TransactionsPage extends StatelessWidget {
                           fontSize: 15,
                         ),
                       ),
-
                       const SizedBox(height: 8),
-
                       DropdownButtonFormField<String>(
                         value: paymentStatus,
                         decoration: const InputDecoration(
@@ -262,10 +248,8 @@ class TransactionsPage extends StatelessWidget {
                       ),
 
                       // STORE SELECTION FOR DUE PURCHASES
-
                       if (isDuePurchase) ...[
                         const SizedBox(height: 16),
-
                         if (stores.isEmpty)
                           Container(
                             width: double.infinity,
@@ -311,10 +295,8 @@ class TransactionsPage extends StatelessWidget {
                       ],
 
                       // PAID AMOUNT FOR PARTIAL PAYMENT
-
                       if (paymentStatus == 'partial') ...[
                         const SizedBox(height: 16),
-
                         TextField(
                           controller: paidController,
                           enabled: !isSaving,
@@ -329,7 +311,6 @@ class TransactionsPage extends StatelessWidget {
 
                       if (paymentStatus == 'full_due') ...[
                         const SizedBox(height: 10),
-
                         const Text(
                           'No payment will be deducted from your account now. '
                           'The full amount will be recorded as due.',
@@ -344,7 +325,6 @@ class TransactionsPage extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // DATE
-
                     OutlinedButton.icon(
                       onPressed: isSaving
                           ? null
@@ -369,11 +349,9 @@ class TransactionsPage extends StatelessWidget {
                         '${selectedDate.year}',
                       ),
                     ),
-
                     const SizedBox(height: 16),
 
                     // NOTE
-
                     TextField(
                       controller: noteController,
                       enabled: !isSaving,
@@ -383,11 +361,9 @@ class TransactionsPage extends StatelessWidget {
                         border: OutlineInputBorder(),
                       ),
                     ),
-
                     const SizedBox(height: 24),
 
                     // SAVE BUTTON
-
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -545,98 +521,234 @@ class TransactionsPage extends StatelessWidget {
     noteController.dispose();
   }
 
+  Future<bool> _confirmDelete(
+    BuildContext context,
+    Transaction item,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete transaction?'),
+          content: Text(
+            'Are you sure you want to delete "${item.title}"?\n\n'
+            'Any related due records and due payments will also be deleted.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return false;
+    }
+
+    try {
+      await database.deleteTransaction(item.id);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transaction deleted successfully.'),
+          ),
+        );
+      }
+
+      return true;
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not delete transaction: $e'),
+          ),
+        );
+      }
+
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<List<Transaction>>(
-        stream: database.watchTransactions(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: StreamBuilder<List<Account>>(
+        stream: database.watchAccounts(),
+        builder: (context, accountSnapshot) {
+          if (accountSnapshot.connectionState ==
+              ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(),
             );
           }
 
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text('Could not load transactions.'),
-            );
-          }
+          final accounts = accountSnapshot.data ?? [];
 
-          final transactions = snapshot.data ?? [];
+          final accountNames = {
+            for (final account in accounts)
+              account.id: account.name,
+          };
 
-          if (transactions.isEmpty) {
-            return const Center(
-              child: Text('No transactions yet.'),
-            );
-          }
+          return StreamBuilder<List<Transaction>>(
+            stream: database.watchTransactions(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState ==
+                  ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: transactions.length,
-            itemBuilder: (context, index) {
-              final item = transactions[index];
+              if (snapshot.hasError) {
+                return const Center(
+                  child: Text('Could not load transactions.'),
+                );
+              }
 
-              final isIncome = item.type == 'income';
-              final isPartiallyPaid =
-                  item.paidAmountPaisa < item.amountPaisa;
+              final transactions = snapshot.data ?? [];
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: isIncome
-                        ? Colors.green.withValues(alpha: 0.12)
-                        : Colors.red.withValues(alpha: 0.12),
-                    child: Icon(
-                      isIncome
-                          ? Icons.arrow_downward
-                          : Icons.arrow_upward,
-                      color: isIncome ? Colors.green : Colors.red,
-                    ),
-                  ),
-                  title: Text(
-                    item.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${item.date.day}/'
-                        '${item.date.month}/'
-                        '${item.date.year}',
+              if (transactions.isEmpty) {
+                return const Center(
+                  child: Text('No transactions yet.'),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: transactions.length,
+                itemBuilder: (context, index) {
+                  final item = transactions[index];
+
+                  final isIncome = item.type == 'income';
+                  final isPartiallyPaid =
+                      item.paidAmountPaisa < item.amountPaisa;
+
+                  final accountName =
+                      accountNames[item.accountId] ??
+                          'Unknown account';
+
+                  return Dismissible(
+                    key: ValueKey(item.id),
+                    direction: DismissDirection.endToStart,
+                    confirmDismiss: (_) =>
+                        _confirmDelete(context, item),
+                    onDismissed: (_) {},
+                    background: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.only(right: 24),
+                      alignment: Alignment.centerRight,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      if (isPartiallyPaid) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Paid: ${formatMoney(item.paidAmountPaisa)}'
-                          '  •  Due: ${formatMoney(item.amountPaisa - item.paidAmountPaisa)}',
-                          style: const TextStyle(
-                            color: Colors.orange,
-                            fontSize: 12,
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Delete',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    child: Card(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: isIncome
+                              ? Colors.green.withValues(alpha: 0.12)
+                              : Colors.red.withValues(alpha: 0.12),
+                          child: Icon(
+                            isIncome
+                                ? Icons.arrow_downward
+                                : Icons.arrow_upward,
+                            color:
+                                isIncome ? Colors.green : Colors.red,
                           ),
                         ),
-                      ],
-                    ],
-                  ),
-                  trailing: Text(
-                    '${isIncome ? '+' : '-'}'
-                    '${formatMoney(item.amountPaisa)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isIncome ? Colors.green : Colors.red,
+                        title: Text(
+                          item.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${item.date.day}/'
+                              '${item.date.month}/'
+                              '${item.date.year}',
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item.paidAmountPaisa > 0
+                                  ? 'Paid by: $accountName'
+                                  : 'Payment account: $accountName',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.color,
+                              ),
+                            ),
+                            if (isPartiallyPaid) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Paid: ${formatMoney(item.paidAmountPaisa)}'
+                                '  •  Due: ${formatMoney(item.amountPaisa - item.paidAmountPaisa)}',
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        trailing: Text(
+                          '${isIncome ? '+' : '-'}'
+                          '${formatMoney(item.amountPaisa)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isIncome
+                                ? Colors.green
+                                : Colors.red,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               );
             },
           );
         },
       ),
-
       floatingActionButton: FloatingActionButton(
         shape: const CircleBorder(),
         onPressed: () => _addTransaction(context),
