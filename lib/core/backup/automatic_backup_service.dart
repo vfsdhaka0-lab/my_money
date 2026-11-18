@@ -19,20 +19,16 @@ class AutomaticBackupService {
   StreamSubscription? _databaseSubscription;
 
   bool _isStarted = false;
+  bool _isReady = false;
 
   static const Duration _backupDelay =
       Duration(seconds: 5);
 
-  Future<File> _getBackupTimeFile() async {
+  Future<File> _getFile(String name) async {
     final directory =
         await getApplicationDocumentsDirectory();
 
-    return File(
-      p.join(
-        directory.path,
-        'automatic_backup_last_success.txt',
-      ),
-    );
+    return File(p.join(directory.path, name));
   }
 
   void start() {
@@ -46,59 +42,86 @@ class AutomaticBackupService {
         )
         .listen(
       (_) {
-        _scheduleBackup();
+        if (_isReady) {
+          _scheduleBackup();
+        }
       },
-      onError: (Object error) {
-        // Prevent listener errors from crashing the app.
-      },
+      onError: (Object error) {},
     );
 
-    unawaited(_checkDailyBackup());
+    unawaited(_loadReadiness());
+  }
+
+  Future<void> _loadReadiness() async {
+    try {
+      final file =
+          await _getFile('automatic_backup_enabled.txt');
+
+      _isReady = await file.exists();
+
+      if (_isReady) {
+        await _checkDailyBackup();
+      }
+    } catch (_) {
+      _isReady = false;
+    }
+  }
+
+  Future<void> markBackupReady() async {
+    final file =
+        await _getFile('automatic_backup_enabled.txt');
+
+    await file.writeAsString('enabled');
+
+    _isReady = true;
+
+    await _saveSuccessfulBackupTime();
   }
 
   void _scheduleBackup() {
+    if (!_isReady) return;
+
     _backupTimer?.cancel();
 
     _backupTimer = Timer(_backupDelay, () async {
       try {
         await BackupManager.instance.backupAutomatically();
         await _saveSuccessfulBackupTime();
-      } catch (error) {
-        // A failed upload must not be recorded as successful.
+      } catch (_) {
+        // Retry on a later database change or app launch.
       }
     });
   }
 
   Future<void> _checkDailyBackup() async {
-    try {
-      final file = await _getBackupTimeFile();
+    final file =
+        await _getFile('automatic_backup_last_success.txt');
 
-      DateTime? lastBackup;
+    DateTime? lastBackup;
 
-      if (await file.exists()) {
-        final savedTime = await file.readAsString();
-        lastBackup = DateTime.tryParse(savedTime);
-      }
-
-      final now = DateTime.now();
-
-      final backupIsDue = lastBackup == null ||
-          lastBackup.year != now.year ||
-          lastBackup.month != now.month ||
-          lastBackup.day != now.day;
-
-      if (!backupIsDue) return;
-
-      await BackupManager.instance.backupAutomatically();
-
-      await _saveSuccessfulBackupTime();
-    } catch (error) {
-      // Try again the next time the app opens.
+    if (await file.exists()) {
+      lastBackup = DateTime.tryParse(
+        await file.readAsString(),
+      );
     }
+
+    final now = DateTime.now();
+
+    final backupIsDue = lastBackup == null ||
+        lastBackup.year != now.year ||
+        lastBackup.month != now.month ||
+        lastBackup.day != now.day;
+
+    if (!backupIsDue) return;
+
+    await BackupManager.instance.backupAutomatically();
+
+    await _saveSuccessfulBackupTime();
   }
 
   Future<void> _saveSuccessfulBackupTime() async {
-    final file = await _getBackupTimeFile();
+    final file =
+        await _getFile('automatic_backup_last_success.txt');
 
     await file.writeAsString(
       DateTime.now().toIso8601String(),
