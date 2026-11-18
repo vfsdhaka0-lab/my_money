@@ -1,6 +1,8 @@
 
 import 'dart:async';
 
+import 'package:drift/drift.dart' show TableUpdateQuery;
+
 import '../../shared/database_instance.dart';
 import 'backup_manager.dart';
 
@@ -32,7 +34,7 @@ class AutomaticBackupService {
         _scheduleBackup();
       },
       onError: (Object error) {
-        // Database listener errors should not crash the app.
+        // Prevent listener errors from crashing the app.
       },
     );
   }
@@ -44,7 +46,7 @@ class AutomaticBackupService {
       try {
         await BackupManager.instance.backupAutomatically();
       } catch (error) {
-        // Automatic backup failures must not crash the app.
+        // Prevent automatic backup errors from crashing the app.
       }
     });
   }
