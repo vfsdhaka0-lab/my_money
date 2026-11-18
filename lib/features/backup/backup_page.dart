@@ -1,7 +1,9 @@
-// ignore_for_file: deprecated_member_use
+
+ // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 
+import '../../core/backup/automatic_backup_service.dart';
 import '../../core/backup/backup_manager.dart';
 import '../../core/backup/backup_restore_service.dart';
 import '../../core/backup/google_drive_auth.dart';
@@ -35,15 +37,20 @@ class _BackupPageState extends State<BackupPage> {
 
       await BackupManager.instance.backupNow();
 
+      await AutomaticBackupService.instance.markBackupReady();
+
       if (!mounted) return;
 
       setState(() {
-        _status = 'Your backup was uploaded successfully!';
+        _status = 'Your backup was uploaded successfully! '
+            'Automatic backup is now enabled.';
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('MyMoney backup completed successfully.'),
+          content: Text(
+            'Backup completed. Automatic backup enabled.',
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -102,15 +109,20 @@ class _BackupPageState extends State<BackupPage> {
     try {
       await BackupRestoreService.instance.restoreFromGoogleDrive();
 
+      await AutomaticBackupService.instance.markBackupReady();
+
       if (!mounted) return;
 
       setState(() {
-        _status = 'Your data was restored successfully!';
+        _status = 'Your data was restored successfully! '
+            'Automatic backup is now enabled.';
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('MyMoney data restored successfully.'),
+          content: Text(
+            'Data restored. Automatic backup enabled.',
+          ),
           backgroundColor: Colors.green,
         ),
       );
