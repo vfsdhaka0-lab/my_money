@@ -17,8 +17,57 @@ class BackupPage extends StatefulWidget {
 
 class _BackupPageState extends State<BackupPage> {
   bool _isLoading = false;
+  bool _automaticEnabled = false;
+  bool _loadingBackupInfo = true;
+
+  DateTime? _lastBackupTime;
+  String? _lastBackupError;
 
   String _status = 'Your data has not been backed up yet.';
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshBackupInfo();
+  }
+
+  Future<void> _refreshBackupInfo() async {
+    final service = AutomaticBackupService.instance;
+
+    try {
+      final enabled =
+          await service.getAutomaticBackupEnabled();
+
+      final lastBackup =
+          await service.getLastSuccessfulBackupTime();
+
+      final lastError =
+          await service.getLastBackupError();
+
+      if (!mounted) return;
+
+      setState(() {
+        _automaticEnabled = enabled;
+        _lastBackupTime = lastBackup;
+        _lastBackupError = lastError;
+        _loadingBackupInfo = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _loadingBackupInfo = false;
+      });
+    }
+  }
+
+  String _formatBackupTime(DateTime? dateTime) {
+    if (dateTime == null) return 'No successful backup yet';
+
+    final localTime = dateTime.toLocal();
+
+    return localTime.toString().split('.').first;
+  }
 
   Future<void> _connectAndBackup() async {
     setState(() {
@@ -38,6 +87,8 @@ class _BackupPageState extends State<BackupPage> {
       await BackupManager.instance.backupNow();
 
       await AutomaticBackupService.instance.markBackupReady();
+
+      await _refreshBackupInfo();
 
       if (!mounted) return;
 
@@ -60,6 +111,8 @@ class _BackupPageState extends State<BackupPage> {
       setState(() {
         _status = 'Backup failed: $e';
       });
+
+      await _refreshBackupInfo();
     } finally {
       if (mounted) {
         setState(() {
@@ -111,6 +164,8 @@ class _BackupPageState extends State<BackupPage> {
 
       await AutomaticBackupService.instance.markBackupReady();
 
+      await _refreshBackupInfo();
+
       if (!mounted) return;
 
       setState(() {
@@ -139,6 +194,8 @@ class _BackupPageState extends State<BackupPage> {
           backgroundColor: Colors.red,
         ),
       );
+
+      await _refreshBackupInfo();
     } finally {
       if (mounted) {
         setState(() {
@@ -153,13 +210,22 @@ class _BackupPageState extends State<BackupPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Backup & Restore'),
+        actions: [
+          IconButton(
+            onPressed: _loadingBackupInfo
+                ? null
+                : _refreshBackupInfo,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh backup status',
+          ),
+        ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
             const Icon(
               Icons.cloud_sync_outlined,
               size: 80,
@@ -180,7 +246,104 @@ class _BackupPageState extends State<BackupPage> {
               'dues and store images safe in Google Drive.',
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
+
+            // Backup status section.
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Backup Status',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (_loadingBackupInfo)
+                      const Center(
+                        child: CircularProgressIndicator(),
+                      )
+                    else ...[
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.autorenew,
+                            color: Colors.blue,
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text('Automatic backup'),
+                          ),
+                          Text(
+                            _automaticEnabled
+                                ? 'Enabled'
+                                : 'Not enabled',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _automaticEnabled
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      const Text(
+                        'Last successful backup',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _formatBackupTime(_lastBackupTime),
+                      ),
+                      const Divider(height: 24),
+                      const Text(
+                        'Latest automatic backup error',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            _lastBackupError == null
+                                ? Icons.check_circle_outline
+                                : Icons.error_outline,
+                            color: _lastBackupError == null
+                                ? Colors.green
+                                : Colors.red,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _lastBackupError ??
+                                  'No recent errors',
+                              style: TextStyle(
+                                color: _lastBackupError == null
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
