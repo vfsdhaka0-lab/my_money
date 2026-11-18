@@ -215,6 +215,29 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  // DELETE TRANSACTION AND RELATED DUE RECORDS
+  Future<void> deleteTransaction(int transactionId) async {
+    await transaction(() async {
+      final relatedDues = await (select(dues)
+            ..where((d) => d.transactionId.equals(transactionId)))
+          .get();
+
+      for (final due in relatedDues) {
+        await (delete(duePayments)
+              ..where((p) => p.dueId.equals(due.id)))
+            .go();
+      }
+
+      await (delete(dues)
+            ..where((d) => d.transactionId.equals(transactionId)))
+          .go();
+
+      await (delete(transactions)
+            ..where((t) => t.id.equals(transactionId)))
+          .go();
+    });
+  }
+
   // DUES
   Stream<List<Due>> watchDues() {
     return (select(dues)
