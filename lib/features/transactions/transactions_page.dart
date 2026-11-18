@@ -1,5 +1,5 @@
 
-// ignore_for_file: deprecated_member_use
+ // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 
@@ -9,6 +9,31 @@ import '../../core/utils/money_formatter.dart';
 
 class TransactionsPage extends StatelessWidget {
   const TransactionsPage({super.key});
+
+  // VALIDATION WARNING DIALOG
+
+  Future<void> _showValidationDialog(
+    BuildContext context,
+    String message,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Required information'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ADD TRANSACTION
 
   Future<void> _addTransaction(BuildContext context) async {
     final accounts = await database.watchAccounts().first;
@@ -44,194 +69,70 @@ class TransactionsPage extends StatelessWidget {
     DateTime selectedDate = DateTime.now();
     bool isSaving = false;
 
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final isDuePurchase =
-                selectedType == 'expense' &&
-                paymentStatus != 'paid';
+    try {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        builder: (sheetContext) {
+          return StatefulBuilder(
+            builder: (context, setModalState) {
+              final isDuePurchase =
+                  selectedType == 'expense' &&
+                  paymentStatus != 'paid';
 
-            final availableCategories =
-                selectedType == 'expense'
-                    ? expenseCategories
-                    : incomeCategories;
+              final availableCategories =
+                  selectedType == 'expense'
+                      ? expenseCategories
+                      : incomeCategories;
 
-            final selectedCategoryExists =
-                availableCategories.any(
-              (category) => category.id == selectedCategoryId,
-            );
+              final selectedCategoryExists =
+                  availableCategories.any(
+                (category) => category.id == selectedCategoryId,
+              );
 
-            final selectedStoreExists = stores.any(
-              (store) => store.id == selectedStoreId,
-            );
+              final selectedStoreExists = stores.any(
+                (store) => store.id == selectedStoreId,
+              );
 
-            return SafeArea(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  top: 24,
-                  bottom:
-                      MediaQuery.of(context).viewInsets.bottom + 24,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Add Transaction',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // TRANSACTION TYPE
-                    DropdownButtonFormField<String>(
-                      value: selectedType,
-                      decoration: const InputDecoration(
-                        labelText: 'Transaction type',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'expense',
-                          child: Text('Expense'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'income',
-                          child: Text('Income'),
-                        ),
-                      ],
-                      onChanged: isSaving
-                          ? null
-                          : (value) {
-                              if (value == null) return;
-
-                              setModalState(() {
-                                selectedType = value;
-                                paymentStatus = 'paid';
-                                selectedCategoryId = null;
-                                selectedStoreId = null;
-                                paidController.clear();
-                              });
-                            },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // CATEGORY
-                    DropdownButtonFormField<int?>(
-                      value: selectedCategoryExists
-                          ? selectedCategoryId
-                          : null,
-                      decoration: const InputDecoration(
-                        labelText: 'Category (optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        const DropdownMenuItem<int?>(
-                          value: null,
-                          child: Text('No category'),
-                        ),
-                        ...availableCategories.map((category) {
-                          return DropdownMenuItem<int?>(
-                            value: category.id,
-                            child: Text(category.name),
-                          );
-                        }),
-                      ],
-                      onChanged: isSaving
-                          ? null
-                          : (value) {
-                              setModalState(() {
-                                selectedCategoryId = value;
-                              });
-                            },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // TITLE
-                    TextField(
-                      controller: titleController,
-                      enabled: !isSaving,
-                      decoration: const InputDecoration(
-                        labelText: 'Title',
-                        hintText: 'e.g. Grocery shopping',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // AMOUNT
-                    TextField(
-                      controller: amountController,
-                      enabled: !isSaving,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Amount (taka)',
-                        hintText: 'e.g. 1000',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ACCOUNT
-                    DropdownButtonFormField<int>(
-                      value: selectedAccountId,
-                      decoration: const InputDecoration(
-                        labelText: 'Account',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: accounts.map((account) {
-                        return DropdownMenuItem(
-                          value: account.id,
-                          child: Text(account.name),
-                        );
-                      }).toList(),
-                      onChanged: isSaving
-                          ? null
-                          : (value) {
-                              if (value == null) return;
-
-                              setModalState(() {
-                                selectedAccountId = value;
-                              });
-                            },
-                    ),
-
-                    // PAYMENT STATUS FOR EXPENSES
-                    if (selectedType == 'expense') ...[
-                      const SizedBox(height: 20),
+              return SafeArea(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 24,
+                    bottom:
+                        MediaQuery.of(context).viewInsets.bottom + 24,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       const Text(
-                        'Payment status',
+                        'Add Transaction',
                         style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 20),
+
+                      // TRANSACTION TYPE
+
                       DropdownButtonFormField<String>(
-                        value: paymentStatus,
+                        value: selectedType,
                         decoration: const InputDecoration(
+                          labelText: 'Transaction type',
                           border: OutlineInputBorder(),
                         ),
                         items: const [
                           DropdownMenuItem(
-                            value: 'paid',
-                            child: Text('Fully Paid'),
+                            value: 'expense',
+                            child: Text('Expense'),
                           ),
                           DropdownMenuItem(
-                            value: 'partial',
-                            child: Text('Partially Paid'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'full_due',
-                            child: Text('Full Due'),
+                            value: 'income',
+                            child: Text('Income'),
                           ),
                         ],
                         onChanged: isSaving
@@ -240,286 +141,422 @@ class TransactionsPage extends StatelessWidget {
                                 if (value == null) return;
 
                                 setModalState(() {
-                                  paymentStatus = value;
-                                  paidController.clear();
+                                  selectedType = value;
+                                  paymentStatus = 'paid';
+                                  selectedCategoryId = null;
                                   selectedStoreId = null;
+                                  paidController.clear();
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // CATEGORY
+
+                      DropdownButtonFormField<int?>(
+                        value: selectedCategoryExists
+                            ? selectedCategoryId
+                            : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Category (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('No category'),
+                          ),
+                          ...availableCategories.map((category) {
+                            return DropdownMenuItem<int?>(
+                              value: category.id,
+                              child: Text(category.name),
+                            );
+                          }),
+                        ],
+                        onChanged: isSaving
+                            ? null
+                            : (value) {
+                                setModalState(() {
+                                  selectedCategoryId = value;
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // TITLE
+
+                      TextField(
+                        controller: titleController,
+                        enabled: !isSaving,
+                        decoration: const InputDecoration(
+                          labelText: 'Title',
+                          hintText: 'e.g. Grocery shopping',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // AMOUNT
+
+                      TextField(
+                        controller: amountController,
+                        enabled: !isSaving,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Amount (taka)',
+                          hintText: 'e.g. 1000',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ACCOUNT
+
+                      DropdownButtonFormField<int>(
+                        value: selectedAccountId,
+                        decoration: const InputDecoration(
+                          labelText: 'Account',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: accounts.map((account) {
+                          return DropdownMenuItem(
+                            value: account.id,
+                            child: Text(account.name),
+                          );
+                        }).toList(),
+                        onChanged: isSaving
+                            ? null
+                            : (value) {
+                                if (value == null) return;
+
+                                setModalState(() {
+                                  selectedAccountId = value;
                                 });
                               },
                       ),
 
-                      // STORE SELECTION FOR DUE PURCHASES
-                      if (isDuePurchase) ...[
-                        const SizedBox(height: 16),
-                        if (stores.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(
-                                alpha: 0.10,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Text(
-                              'No stores available. Please add a store '
-                              'from Categories & Stores first.',
-                              style: TextStyle(
-                                color: Colors.deepOrange,
-                                fontSize: 13,
-                              ),
-                            ),
-                          )
-                        else
-                          DropdownButtonFormField<int>(
-                            value: selectedStoreExists
-                                ? selectedStoreId
-                                : null,
-                            decoration: const InputDecoration(
-                              labelText: 'Select store',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: stores.map((store) {
-                              return DropdownMenuItem<int>(
-                                value: store.id,
-                                child: Text(store.name),
-                              );
-                            }).toList(),
-                            onChanged: isSaving
-                                ? null
-                                : (value) {
-                                    setModalState(() {
-                                      selectedStoreId = value;
-                                    });
-                                  },
-                          ),
-                      ],
+                      // PAYMENT STATUS FOR EXPENSES
 
-                      // PAID AMOUNT FOR PARTIAL PAYMENT
-                      if (paymentStatus == 'partial') ...[
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: paidController,
-                          enabled: !isSaving,
-                          keyboardType: TextInputType.number,
+                      if (selectedType == 'expense') ...[
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Payment status',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        DropdownButtonFormField<String>(
+                          value: paymentStatus,
                           decoration: const InputDecoration(
-                            labelText: 'Paid immediately (taka)',
-                            hintText: 'e.g. 400',
                             border: OutlineInputBorder(),
                           ),
-                        ),
-                      ],
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'paid',
+                              child: Text('Fully Paid'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'partial',
+                              child: Text('Partially Paid'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'full_due',
+                              child: Text('Full Due'),
+                            ),
+                          ],
+                          onChanged: isSaving
+                              ? null
+                              : (value) {
+                                  if (value == null) return;
 
-                      if (paymentStatus == 'full_due') ...[
-                        const SizedBox(height: 10),
-                        const Text(
-                          'No payment will be deducted from your account now. '
-                          'The full amount will be recorded as due.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.orange,
+                                  setModalState(() {
+                                    paymentStatus = value;
+                                    paidController.clear();
+                                    selectedStoreId = null;
+                                  });
+                                },
+                        ),
+
+                        // STORE SELECTION
+
+                        if (isDuePurchase) ...[
+                          const SizedBox(height: 16),
+
+                          if (stores.isEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(
+                                  alpha: 0.10,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                'No stores available. Please add a store '
+                                'from Categories & Stores first.',
+                                style: TextStyle(
+                                  color: Colors.deepOrange,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            )
+                          else
+                            DropdownButtonFormField<int>(
+                              value: selectedStoreExists
+                                  ? selectedStoreId
+                                  : null,
+                              decoration: const InputDecoration(
+                                labelText: 'Select store',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: stores.map((store) {
+                                return DropdownMenuItem<int>(
+                                  value: store.id,
+                                  child: Text(store.name),
+                                );
+                              }).toList(),
+                              onChanged: isSaving
+                                  ? null
+                                  : (value) {
+                                      setModalState(() {
+                                        selectedStoreId = value;
+                                      });
+                                    },
+                            ),
+                        ],
+
+                        // PARTIAL PAYMENT AMOUNT
+
+                        if (paymentStatus == 'partial') ...[
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: paidController,
+                            enabled: !isSaving,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Paid immediately (taka)',
+                              hintText: 'e.g. 400',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
+                        ],
+
+                        // FULL DUE INFORMATION
+
+                        if (paymentStatus == 'full_due') ...[
+                          const SizedBox(height: 10),
+                          const Text(
+                            'No payment will be deducted from your account now. '
+                            'The full amount will be recorded as due.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
 
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                    // DATE
-                    OutlinedButton.icon(
-                      onPressed: isSaving
-                          ? null
-                          : () async {
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: selectedDate,
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2100),
-                              );
+                      // DATE
 
-                              if (picked != null) {
-                                setModalState(() {
-                                  selectedDate = picked;
-                                });
-                              }
-                            },
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(
-                        'Date: ${selectedDate.day}/'
-                        '${selectedDate.month}/'
-                        '${selectedDate.year}',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // NOTE
-                    TextField(
-                      controller: noteController,
-                      enabled: !isSaving,
-                      maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Note (optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // SAVE BUTTON
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
+                      OutlinedButton.icon(
                         onPressed: isSaving
                             ? null
                             : () async {
-                                final title =
-                                    titleController.text.trim();
-
-                                final amount = int.tryParse(
-                                  amountController.text.trim(),
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate,
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime(2100),
                                 );
 
-                                if (title.isEmpty ||
-                                    amount == null ||
-                                    amount <= 0) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Enter a valid title and amount.',
-                                      ),
-                                    ),
-                                  );
-                                  return;
+                                if (picked != null) {
+                                  setModalState(() {
+                                    selectedDate = picked;
+                                  });
                                 }
+                              },
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(
+                          'Date: ${selectedDate.day}/'
+                          '${selectedDate.month}/'
+                          '${selectedDate.year}',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
-                                final totalPaisa = amount * 100;
+                      // NOTE
 
-                                int paidPaisa = totalPaisa;
+                      TextField(
+                        controller: noteController,
+                        enabled: !isSaving,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: 'Note (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
-                                if (paymentStatus == 'partial') {
-                                  final paid = int.tryParse(
-                                    paidController.text.trim(),
+                      // SAVE BUTTON
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  final title =
+                                      titleController.text.trim();
+
+                                  final amount = int.tryParse(
+                                    amountController.text.trim(),
                                   );
 
-                                  if (paid == null ||
-                                      paid <= 0 ||
-                                      paid >= amount) {
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Enter a paid amount greater than zero '
-                                          'and less than the total amount.',
-                                        ),
-                                      ),
+                                  // VALIDATE TITLE AND AMOUNT
+
+                                  if (title.isEmpty ||
+                                      amount == null ||
+                                      amount <= 0) {
+                                    await _showValidationDialog(
+                                      sheetContext,
+                                      'Please enter a valid transaction title '
+                                      'and an amount greater than zero.',
                                     );
                                     return;
                                   }
 
-                                  paidPaisa = paid * 100;
-                                } else if (paymentStatus == 'full_due') {
-                                  paidPaisa = 0;
-                                }
+                                  final totalPaisa = amount * 100;
 
-                                if (isDuePurchase &&
-                                    selectedStoreId == null) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Please select a store.',
-                                      ),
-                                    ),
-                                  );
-                                  return;
-                                }
+                                  int paidPaisa = totalPaisa;
 
-                                setModalState(() {
-                                  isSaving = true;
-                                });
+                                  // VALIDATE PARTIAL PAYMENT
 
-                                try {
-                                  if (isDuePurchase) {
-                                    final selectedStore = stores
-                                        .firstWhere(
-                                      (store) =>
-                                          store.id == selectedStoreId,
+                                  if (paymentStatus == 'partial') {
+                                    final paid = int.tryParse(
+                                      paidController.text.trim(),
                                     );
 
-                                    await database.addPurchaseWithDue(
-                                      accountId: selectedAccountId,
-                                      title: title,
-                                      totalAmountPaisa: totalPaisa,
-                                      paidAmountPaisa: paidPaisa,
-                                      storeName: selectedStore.name,
-                                      categoryId: selectedCategoryId,
-                                      date: selectedDate,
-                                      note: noteController.text
-                                              .trim()
-                                              .isEmpty
-                                          ? null
-                                          : noteController.text.trim(),
-                                    );
-                                  } else {
-                                    await database.addTransaction(
-                                      accountId: selectedAccountId,
-                                      title: title,
-                                      amountPaisa: totalPaisa,
-                                      type: selectedType,
-                                      categoryId: selectedCategoryId,
-                                      date: selectedDate,
-                                      note: noteController.text
-                                              .trim()
-                                              .isEmpty
-                                          ? null
-                                          : noteController.text.trim(),
-                                    );
+                                    if (paid == null ||
+                                        paid <= 0 ||
+                                        paid >= amount) {
+                                      await _showValidationDialog(
+                                        sheetContext,
+                                        'Please enter a paid amount greater '
+                                        'than zero and less than the total amount.',
+                                      );
+                                      return;
+                                    }
+
+                                    paidPaisa = paid * 100;
+                                  } else if (paymentStatus == 'full_due') {
+                                    paidPaisa = 0;
                                   }
 
-                                  if (sheetContext.mounted) {
-                                    Navigator.pop(sheetContext);
+                                  // VALIDATE STORE
+
+                                  if (isDuePurchase &&
+                                      (selectedStoreId == null ||
+                                          stores.isEmpty)) {
+                                    await _showValidationDialog(
+                                      sheetContext,
+                                      'Please add a store in Categories & Stores '
+                                      'and select a store for this due purchase.',
+                                    );
+                                    return;
                                   }
-                                } catch (e) {
+
                                   setModalState(() {
-                                    isSaving = false;
+                                    isSaving = true;
                                   });
 
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Could not save transaction: $e',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                        child: isSaving
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Save Transaction'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+                                  try {
+                                    if (isDuePurchase) {
+                                      final selectedStore =
+                                          stores.firstWhere(
+                                        (store) =>
+                                            store.id == selectedStoreId,
+                                      );
 
-    titleController.dispose();
-    amountController.dispose();
-    paidController.dispose();
-    noteController.dispose();
+                                      await database.addPurchaseWithDue(
+                                        accountId: selectedAccountId,
+                                        title: title,
+                                        totalAmountPaisa: totalPaisa,
+                                        paidAmountPaisa: paidPaisa,
+                                        storeName: selectedStore.name,
+                                        categoryId: selectedCategoryId,
+                                        date: selectedDate,
+                                        note: noteController.text
+                                                .trim()
+                                                .isEmpty
+                                            ? null
+                                            : noteController.text.trim(),
+                                      );
+                                    } else {
+                                      await database.addTransaction(
+                                        accountId: selectedAccountId,
+                                        title: title,
+                                        amountPaisa: totalPaisa,
+                                        type: selectedType,
+                                        categoryId: selectedCategoryId,
+                                        date: selectedDate,
+                                        note: noteController.text
+                                                .trim()
+                                                .isEmpty
+                                            ? null
+                                            : noteController.text.trim(),
+                                      );
+                                    }
+
+                                    if (sheetContext.mounted) {
+                                      Navigator.pop(sheetContext);
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      setModalState(() {
+                                        isSaving = false;
+                                      });
+
+                                      await _showValidationDialog(
+                                        sheetContext,
+                                        'Could not save transaction:\n$e',
+                                      );
+                                    }
+                                  }
+                                },
+                          child: isSaving
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Save Transaction'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      titleController.dispose();
+      amountController.dispose();
+      paidController.dispose();
+      noteController.dispose();
+    }
   }
+
+  // CONFIRM DELETE
 
   Future<bool> _confirmDelete(
     BuildContext context,
@@ -584,6 +621,8 @@ class TransactionsPage extends StatelessWidget {
     }
   }
 
+  // BUILD TRANSACTION LIST
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -635,8 +674,14 @@ class TransactionsPage extends StatelessWidget {
                   final item = transactions[index];
 
                   final isIncome = item.type == 'income';
+
                   final isPartiallyPaid =
+                      item.paidAmountPaisa > 0 &&
                       item.paidAmountPaisa < item.amountPaisa;
+
+                  final isFullDue =
+                      item.type == 'expense' &&
+                      item.paidAmountPaisa == 0;
 
                   final accountName =
                       accountNames[item.accountId] ??
@@ -705,18 +750,26 @@ class TransactionsPage extends StatelessWidget {
                               '${item.date.year}',
                             ),
                             const SizedBox(height: 4),
+
+                            // PAYMENT ACCOUNT INFORMATION
+
                             Text(
-                              item.paidAmountPaisa > 0
-                                  ? 'Paid by: $accountName'
-                                  : 'Payment account: $accountName',
+                              isFullDue
+                                  ? 'Fully due — no payment made yet'
+                                  : 'Paid by: $accountName',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.color,
+                                color: isFullDue
+                                    ? Colors.orange
+                                    : Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color,
                               ),
                             ),
+
+                            // PARTIAL PAYMENT INFORMATION
+
                             if (isPartiallyPaid) ...[
                               const SizedBox(height: 4),
                               Text(
