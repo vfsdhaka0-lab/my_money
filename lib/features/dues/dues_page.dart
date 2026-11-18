@@ -1,5 +1,5 @@
 
-// ignore_for_file: deprecated_member_use
+ // ignore_for_file: deprecated_member_use
 
 import 'dart:io';
 
@@ -293,11 +293,12 @@ class StoreOutstandingPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4FA38C),
+        backgroundColor:
+            Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
-        toolbarHeight: 80,
+        toolbarHeight: 56,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
             bottomLeft: Radius.circular(40),
