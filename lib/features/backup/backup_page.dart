@@ -1,6 +1,8 @@
 
  // ignore_for_file: deprecated_member_use
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/backup/automatic_backup_service.dart';
@@ -15,7 +17,8 @@ class BackupPage extends StatefulWidget {
   State<BackupPage> createState() => _BackupPageState();
 }
 
-class _BackupPageState extends State<BackupPage> {
+class _BackupPageState extends State<BackupPage>
+    with WidgetsBindingObserver {
   bool _isLoading = false;
   bool _automaticEnabled = false;
   bool _loadingBackupInfo = true;
@@ -23,12 +26,37 @@ class _BackupPageState extends State<BackupPage> {
   DateTime? _lastBackupTime;
   String? _lastBackupError;
 
+  Timer? _refreshTimer;
+
   String _status = 'Your data has not been backed up yet.';
 
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addObserver(this);
+
     _refreshBackupInfo();
+
+    // Automatically refresh backup status every 3 seconds.
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _refreshBackupInfo(),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshBackupInfo();
+    }
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _refreshBackupInfo() async {
@@ -248,7 +276,6 @@ class _BackupPageState extends State<BackupPage> {
             ),
             const SizedBox(height: 24),
 
-            // Backup status section.
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
