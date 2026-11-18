@@ -120,6 +120,27 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  // ADD CATEGORY
+  Future<int> addCategory({
+    required String name,
+    required String type,
+    required String icon,
+    required String color,
+  }) {
+    if (name.trim().isEmpty) {
+      throw ArgumentError('Category name cannot be empty.');
+    }
+
+    return into(categories).insert(
+      CategoriesCompanion.insert(
+        name: name.trim(),
+        type: type,
+        icon: Value(icon),
+        color: Value(color),
+      ),
+    );
+  }
+
   // STORES
   Stream<List<Store>> watchStores() {
     return (select(stores)
