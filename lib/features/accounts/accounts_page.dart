@@ -1,5 +1,5 @@
 
- // ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 
@@ -99,6 +99,87 @@ class AccountsPage extends StatelessWidget {
     } finally {
       nameController.dispose();
       balanceController.dispose();
+    }
+  }
+
+  // CONFIRM AND DELETE ACCOUNT
+
+  Future<bool> confirmDelete(
+    BuildContext context,
+    Account account,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: Text(
+          'Are you sure you want to delete "${account.name}"?\n\n'
+          'An account used by transactions or due payments '
+          'cannot be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext, false);
+            },
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(dialogContext, true);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return false;
+    }
+
+    try {
+      final deleted =
+          await database.deleteAccountIfUnused(account.id);
+
+      if (!context.mounted) {
+        return deleted;
+      }
+
+      if (!deleted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Cannot delete this account because it is used '
+              'by transactions or due payments.',
+            ),
+          ),
+        );
+
+        return false;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account deleted.'),
+        ),
+      );
+
+      return true;
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not delete account: $e'),
+          ),
+        );
+      }
+
+      return false;
     }
   }
 
@@ -356,45 +437,90 @@ class AccountsPage extends StatelessWidget {
 
                         final color = accountColor(account.name);
 
-                        return Card(
-                          color: Colors.white,
-                          elevation: 2,
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
+                        return Dismissible(
+                          key: ValueKey(account.id),
+                          direction: DismissDirection.endToStart,
+
+                          background: Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(17),
+                            ),
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(
+                              right: 24,
+                            ),
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(17),
-                          ),
-                          child: ListTile(
-                            contentPadding:
-                                const EdgeInsets.symmetric(
-                              horizontal: 15,
-                              vertical: 8,
+
+                          confirmDismiss: (_) async {
+                            return confirmDelete(context, account);
+                          },
+
+                          onDismissed: (_) {},
+
+                          child: Card(
+                            color: Colors.white,
+                            elevation: 2,
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
                             ),
-                            leading: CircleAvatar(
-                              radius: 23,
-                              backgroundColor: color,
-                              child: Icon(
-                                accountIcon(account.name),
-                                color: Colors.white,
-                                size: 24,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(17),
+                            ),
+                            child: ListTile(
+                              contentPadding:
+                                  const EdgeInsets.symmetric(
+                                horizontal: 15,
+                                vertical: 8,
                               ),
-                            ),
-                            title: Text(
-                              account.name,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                color: Colors.black,
-                                fontWeight: FontWeight.w500,
+                              leading: CircleAvatar(
+                                radius: 23,
+                                backgroundColor: color,
+                                child: Icon(
+                                  accountIcon(account.name),
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
                               ),
-                            ),
-                            trailing: Text(
-                              formatMoney(balance),
-                              style: const TextStyle(
-                                fontSize: 17,
-                                color: darkText,
-                                fontWeight: FontWeight.w500,
+                              title: Text(
+                                account.name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              trailing: Text(
+                                formatMoney(balance),
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  color: darkText,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
