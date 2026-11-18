@@ -80,6 +80,33 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  // DELETE ACCOUNT ONLY WHEN UNUSED
+  Future<bool> deleteAccountIfUnused(int accountId) async {
+    return transaction(() async {
+      final linkedTransactions = await (select(transactions)
+            ..where((t) => t.accountId.equals(accountId)))
+          .get();
+
+      if (linkedTransactions.isNotEmpty) {
+        return false;
+      }
+
+      final linkedPayments = await (select(duePayments)
+            ..where((p) => p.accountId.equals(accountId)))
+          .get();
+
+      if (linkedPayments.isNotEmpty) {
+        return false;
+      }
+
+      await (delete(accounts)
+            ..where((a) => a.id.equals(accountId)))
+          .go();
+
+      return true;
+    });
+  }
+
   // CATEGORIES
   Stream<List<Category>> watchCategories({
     required String type,
@@ -91,22 +118,6 @@ class AppDatabase extends _$AppDatabase {
             (c) => OrderingTerm.asc(c.name),
           ]))
         .watch();
-  }
-
-  Future<int> addCategory({
-    required String name,
-    required String type,
-    required String icon,
-    required String color,
-  }) {
-    return into(categories).insert(
-      CategoriesCompanion.insert(
-        name: name,
-        type: type,
-        icon: Value(icon),
-        color: Value(color),
-      ),
-    );
   }
 
   // STORES
