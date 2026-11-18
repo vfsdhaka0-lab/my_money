@@ -28,16 +28,6 @@ class GoogleDriveAuth {
     _initialized = true;
   }
 
-  Future<GoogleSignInAccount> signIn() async {
-    await initialize();
-
-    final account = await _googleSignIn.authenticate();
-
-    _currentUser = account;
-
-    return account;
-  }
-
   Future<GoogleSignInAccount?> tryRestoreSignIn() async {
     await initialize();
 
@@ -51,12 +41,30 @@ class GoogleDriveAuth {
     return _currentUser;
   }
 
+  Future<GoogleSignInAccount> signIn() async {
+    await initialize();
+
+    // First try to restore the previously selected Google account.
+    final existingAccount = await tryRestoreSignIn();
+
+    if (existingAccount != null) {
+      return existingAccount;
+    }
+
+    // Show the account chooser only when no account can be restored.
+    final account = await _googleSignIn.authenticate();
+
+    _currentUser = account;
+
+    return account;
+  }
+
   Future<AuthClient> getAuthenticatedClient({
     bool allowInteraction = true,
   }) async {
     await initialize();
 
-    final account = await tryRestoreSignIn();
+    var account = await tryRestoreSignIn();
 
     if (account == null) {
       if (!allowInteraction) {
@@ -65,15 +73,13 @@ class GoogleDriveAuth {
         );
       }
 
-      await signIn();
+      account = await signIn();
     }
-
-    final currentAccount = _currentUser!;
 
     final scopes = [BackupConfig.driveScope];
 
     var authorization =
-        await currentAccount.authorizationClient
+        await account.authorizationClient
             .authorizationForScopes(scopes);
 
     if (authorization == null) {
@@ -84,7 +90,7 @@ class GoogleDriveAuth {
       }
 
       authorization =
-          await currentAccount.authorizationClient
+          await account.authorizationClient
               .authorizeScopes(scopes);
     }
 
