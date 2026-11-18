@@ -300,9 +300,8 @@ class StoreOutstandingPage extends StatelessWidget {
         elevation: 0,
         toolbarHeight: 56,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(40),
-            bottomRight: Radius.circular(40),
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(30),
           ),
         ),
         title: Text(
