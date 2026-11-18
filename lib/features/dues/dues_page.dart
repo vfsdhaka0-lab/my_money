@@ -293,7 +293,24 @@ class StoreOutstandingPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(storeName),
+        backgroundColor: const Color(0xFF4FA38C),
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+        toolbarHeight: 80,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(40),
+            bottomRight: Radius.circular(40),
+          ),
+        ),
+        title: Text(
+          storeName,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
