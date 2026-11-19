@@ -168,9 +168,7 @@ class DuesPage extends StatelessWidget {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
                       const Text(
                         'Store-wise Outstanding',
                         style: TextStyle(
@@ -178,9 +176,7 @@ class DuesPage extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
                       ...groupedDues.entries.map((entry) {
                         final storeItems = entry.value;
 
@@ -272,7 +268,8 @@ class DuesPage extends StatelessWidget {
   }
 }
 
-class StoreOutstandingPage extends StatelessWidget {
+// STORE OUTSTANDING PAGE
+class StoreOutstandingPage extends StatefulWidget {
   final String storeName;
   final List<DueItem> items;
   final String? imagePath;
@@ -285,11 +282,296 @@ class StoreOutstandingPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final totalDue = items.fold<int>(
+  State<StoreOutstandingPage> createState() =>
+      _StoreOutstandingPageState();
+}
+
+class _StoreOutstandingPageState
+    extends State<StoreOutstandingPage> {
+  late Map<int, int> _outstandingAmounts;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _outstandingAmounts = {
+      for (final item in widget.items)
+        item.due.id: item.outstanding,
+    };
+  }
+
+  int get _totalDue {
+    return _outstandingAmounts.values.fold<int>(
       0,
-      (total, item) => total + item.outstanding,
+      (total, amount) => total + amount,
     );
+  }
+
+  Future<void> _payPurchase(DueItem item) async {
+    final accounts = await database.select(database.accounts).get();
+
+    if (!mounted) return;
+
+    if (accounts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please create an account first.'),
+        ),
+      );
+      return;
+    }
+
+    final outstanding =
+        _outstandingAmounts[item.due.id] ?? item.outstanding;
+
+    final amountController = TextEditingController();
+    final noteController = TextEditingController();
+
+    int? selectedAccountId = accounts.first.id;
+    DateTime paymentDate = DateTime.now();
+
+    bool saving = false;
+
+    final paymentAmount = await showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Pay Individual Purchase'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.purchase.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Outstanding: ${formatMoney(outstanding)}',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: amountController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Payment Amount (Taka)',
+                        hintText: 'Enter amount',
+                        prefixText: '৳ ',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    DropdownButtonFormField<int>(
+                      value: selectedAccountId,
+                      decoration: const InputDecoration(
+                        labelText: 'Payment Account',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: accounts.map((account) {
+                        return DropdownMenuItem<int>(
+                          value: account.id,
+                          child: Text(account.name),
+                        );
+                      }).toList(),
+                      onChanged: saving
+                          ? null
+                          : (value) {
+                              setDialogState(() {
+                                selectedAccountId = value;
+                              });
+                            },
+                    ),
+                    const SizedBox(height: 14),
+
+                    OutlinedButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              final pickedDate =
+                                  await showDatePicker(
+                                context: context,
+                                initialDate: paymentDate,
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 365),
+                                ),
+                              );
+
+                              if (pickedDate != null) {
+                                setDialogState(() {
+                                  paymentDate = pickedDate;
+                                });
+                              }
+                            },
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        'Date: ${paymentDate.day}/'
+                        '${paymentDate.month}/'
+                        '${paymentDate.year}',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    TextField(
+                      controller: noteController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Note (Optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving
+                      ? null
+                      : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final amount =
+                              double.tryParse(
+                            amountController.text.trim(),
+                          );
+
+                          if (amount == null ||
+                              !amount.isFinite ||
+                              amount <= 0) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Enter a valid payment amount.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          final amountPaisa =
+                              (amount * 100).round();
+
+                          if (amountPaisa > outstanding) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Payment cannot exceed the outstanding amount.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (selectedAccountId == null) {
+                            return;
+                          }
+
+                          setDialogState(() {
+                            saving = true;
+                          });
+
+                          try {
+                            await database.addDuePayment(
+                              dueId: item.due.id,
+                              accountId: selectedAccountId!,
+                              amountPaisa: amountPaisa,
+                              date: paymentDate,
+                              note: noteController.text.trim().isEmpty
+                                  ? null
+                                  : noteController.text.trim(),
+                            );
+
+                            if (dialogContext.mounted) {
+                              Navigator.pop(
+                                dialogContext,
+                                amountPaisa,
+                              );
+                            }
+                          } catch (error) {
+                            setDialogState(() {
+                              saving = false;
+                            });
+
+                            if (dialogContext.mounted) {
+                              ScaffoldMessenger.of(dialogContext)
+                                  .showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Could not save payment: $error',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Save Payment'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    amountController.dispose();
+    noteController.dispose();
+
+    if (paymentAmount == null || !mounted) return;
+
+    setState(() {
+      final remaining =
+          (_outstandingAmounts[item.due.id] ?? outstanding) -
+              paymentAmount;
+
+      if (remaining <= 0) {
+        _outstandingAmounts.remove(item.due.id);
+      } else {
+        _outstandingAmounts[item.due.id] = remaining;
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Payment saved successfully.'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleItems = widget.items.where((item) {
+      return (_outstandingAmounts[item.due.id] ?? 0) > 0;
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -305,141 +587,173 @@ class StoreOutstandingPage extends StatelessWidget {
           ),
         ),
         title: Text(
-          storeName,
+          widget.storeName,
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
+      body: _totalDue <= 0
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _StoreImage(
-                    imagePath: imagePath,
-                    size: 65,
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 55,
+                    color: Colors.green,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                  SizedBox(height: 12),
+                  Text(
+                    'All dues have been paid!',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Row(
                       children: [
-                        Text(
-                          storeName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        _StoreImage(
+                          imagePath: widget.imagePath,
+                          size: 65,
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          '${items.length} unpaid purchase(s)',
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Outstanding: ${formatMoney(totalDue)}',
-                          style: const TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.storeName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '${visibleItems.length} unpaid purchase(s)',
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                'Outstanding: ${formatMoney(_totalDue)}',
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          const Text(
-            'Purchase History',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          ...items.map((item) {
-            final purchase = item.purchase;
-
-            final paidAmount =
-                purchase.amountPaisa - item.outstanding;
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      purchase.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      'Purchase #${purchase.id} • '
-                      '${purchase.date.day}/'
-                      '${purchase.date.month}/'
-                      '${purchase.date.year}',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const Divider(height: 22),
-                    _AmountRow(
-                      label: 'Purchase amount',
-                      amount: purchase.amountPaisa,
-                    ),
-                    const SizedBox(height: 8),
-                    _AmountRow(
-                      label: 'Total paid',
-                      amount: paidAmount,
-                      color: Colors.green,
-                    ),
-                    const SizedBox(height: 8),
-                    _AmountRow(
-                      label: 'Outstanding',
-                      amount: item.outstanding,
-                      color: Colors.orange,
-                      bold: true,
-                    ),
-                    if (purchase.note != null &&
-                        purchase.note!.trim().isNotEmpty) ...[
-                      const Divider(height: 20),
-                      Text(
-                        'Note: ${purchase.note}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ],
                 ),
-              ),
-            );
-          }),
-        ],
-      ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Purchase History',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...visibleItems.map((item) {
+                  final purchase = item.purchase;
+                  final outstanding =
+                      _outstandingAmounts[item.due.id] ?? 0;
+
+                  final paidAmount =
+                      purchase.amountPaisa - outstanding;
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            purchase.title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            'Purchase #${purchase.id} • '
+                            '${purchase.date.day}/'
+                            '${purchase.date.month}/'
+                            '${purchase.date.year}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const Divider(height: 22),
+                          _AmountRow(
+                            label: 'Purchase amount',
+                            amount: purchase.amountPaisa,
+                          ),
+                          const SizedBox(height: 8),
+                          _AmountRow(
+                            label: 'Total paid',
+                            amount: paidAmount,
+                            color: Colors.green,
+                          ),
+                          const SizedBox(height: 8),
+                          _AmountRow(
+                            label: 'Outstanding',
+                            amount: outstanding,
+                            color: Colors.orange,
+                            bold: true,
+                          ),
+                          if (purchase.note != null &&
+                              purchase.note!.trim().isNotEmpty) ...[
+                            const Divider(height: 20),
+                            Text(
+                              'Note: ${purchase.note}',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () => _payPurchase(item),
+                              icon: const Icon(
+                                Icons.payments_outlined,
+                              ),
+                              label: const Text(
+                                'Pay Individual Purchase',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
     );
   }
 }
 
+// STORE IMAGE
 class _StoreImage extends StatelessWidget {
   final String? imagePath;
   final double size;
@@ -463,8 +777,7 @@ class _StoreImage extends StatelessWidget {
             ? Image.file(
                 File(imagePath!),
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                    _placeholder(),
+                errorBuilder: (_, _, _) => _placeholder(),
               )
             : _placeholder(),
       ),
@@ -484,6 +797,7 @@ class _StoreImage extends StatelessWidget {
   }
 }
 
+// AMOUNT ROW
 class _AmountRow extends StatelessWidget {
   final String label;
   final int amount;
@@ -524,6 +838,7 @@ class _AmountRow extends StatelessWidget {
   }
 }
 
+// EMPTY DUES
 class _EmptyDues extends StatelessWidget {
   const _EmptyDues();
 
@@ -559,6 +874,7 @@ class _EmptyDues extends StatelessWidget {
   }
 }
 
+// PUBLIC DUE ITEM MODEL
 class DueItem {
   final Due due;
   final Transaction purchase;
