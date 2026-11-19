@@ -291,6 +291,7 @@ class DuesPage extends StatelessWidget {
 }
 
 // STORE OUTSTANDING PAGE
+
 class StoreOutstandingPage extends StatefulWidget {
   final String storeName;
   final List<DueItem> items;
@@ -335,47 +336,6 @@ class _StoreOutstandingPageState
     }).toList();
   }
 
-  List<DueItem> get _oldestFirst {
-    final result = List<DueItem>.from(_visibleItems);
-
-    result.sort((a, b) {
-      final dateCompare =
-          a.purchase.date.compareTo(b.purchase.date);
-
-      if (dateCompare != 0) {
-        return dateCompare;
-      }
-
-      return a.due.id.compareTo(b.due.id);
-    });
-
-    return result;
-  }
-
-  Map<int, int> _calculateAutomaticAllocations(
-    int amountPaisa,
-  ) {
-    var remaining = amountPaisa;
-    final allocations = <int, int>{};
-
-    for (final item in _oldestFirst) {
-      if (remaining <= 0) break;
-
-      final outstanding =
-          _outstandingAmounts[item.due.id] ?? 0;
-
-      final allocation =
-          remaining < outstanding ? remaining : outstanding;
-
-      if (allocation > 0) {
-        allocations[item.due.id] = allocation;
-        remaining -= allocation;
-      }
-    }
-
-    return allocations;
-  }
-
   int? _parsePaisa(String value) {
     final amount = double.tryParse(value.trim());
 
@@ -388,8 +348,11 @@ class _StoreOutstandingPageState
     return (amount * 100).round();
   }
 
+  // PAY INDIVIDUAL PURCHASE
+
   Future<void> _payPurchase(DueItem item) async {
-    final accounts = await database.select(database.accounts).get();
+    final accounts =
+        await database.select(database.accounts).get();
 
     if (!mounted) return;
 
@@ -644,8 +607,10 @@ class _StoreOutstandingPageState
   }
 
   // PAY STORE
+
   Future<void> _payStore() async {
-    final accounts = await database.select(database.accounts).get();
+    final accounts =
+        await database.select(database.accounts).get();
 
     if (!mounted) return;
 
@@ -663,338 +628,128 @@ class _StoreOutstandingPageState
     final amountController = TextEditingController();
     final noteController = TextEditingController();
 
-    final allocationControllers =
-        <int, TextEditingController>{};
-
-    for (final item in _oldestFirst) {
-      allocationControllers[item.due.id] =
-          TextEditingController();
-    }
-
     int? selectedAccountId = accounts.first.id;
     DateTime paymentDate = DateTime.now();
-
-    bool manualMode = false;
     bool saving = false;
-    Map<int, int> automaticAllocations = {};
 
-    int getEnteredAmount() {
-      return _parsePaisa(amountController.text) ?? 0;
-    }
-
-    int getManualTotal() {
-      return allocationControllers.values.fold<int>(
-        0,
-        (total, controller) =>
-            total + (_parsePaisa(controller.text) ?? 0),
-      );
-    }
-
-    void updateAutomaticFields() {
-      final amount = getEnteredAmount();
-
-      automaticAllocations =
-          _calculateAutomaticAllocations(amount);
-
-      for (final item in _oldestFirst) {
-        final allocation =
-            automaticAllocations[item.due.id] ?? 0;
-
-        allocationControllers[item.due.id]!.text =
-            (allocation / 100).toStringAsFixed(2);
-      }
-    }
-
-    final allocationsResult =
-        await showDialog<Map<int, int>>(
+    final result = await showDialog<Map<int, int>>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final enteredAmount = getEnteredAmount();
-            final manualTotal = getManualTotal();
+            final amount = double.tryParse(
+              amountController.text.trim(),
+            );
 
-            final displayedAllocations =
-                manualMode
-                    ? {
-                        for (final item in _oldestFirst)
-                          item.due.id:
-                              _parsePaisa(
-                                allocationControllers[
-                                        item.due.id]!
-                                    .text,
-                              ) ??
-                              0,
-                      }
-                    : automaticAllocations;
+            final amountPaisa =
+                amount != null &&
+                        amount.isFinite &&
+                        amount > 0
+                    ? (amount * 100).round()
+                    : 0;
 
-            final allocatedTotal = manualMode
-                ? manualTotal
-                : displayedAllocations.values.fold<int>(
-                    0,
-                    (total, value) => total + value,
-                  );
-
-            final amountIsValid =
-                enteredAmount > 0 &&
-                enteredAmount <= _totalDue;
-
-            final allocationsMatch =
-                allocatedTotal == enteredAmount;
+            final validAmount =
+                amountPaisa > 0 && amountPaisa <= _totalDue;
 
             return AlertDialog(
               title: const Text('Pay Store'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.storeName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                        ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.storeName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Total outstanding: ${formatMoney(_totalDue)}',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Total outstanding: ${formatMoney(_totalDue)}',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 18),
-                      TextField(
-                        controller: amountController,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Total Payment (Taka)',
-                          prefixText: '৳ ',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (_) {
-                          setDialogState(() {
-                            if (!manualMode) {
-                              updateAutomaticFields();
-                            }
-                          });
-                        },
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: amountController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                      const SizedBox(height: 14),
-                      DropdownButtonFormField<int>(
-                        value: selectedAccountId,
-                        decoration: const InputDecoration(
-                          labelText: 'Payment Account',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: accounts.map((account) {
-                          return DropdownMenuItem<int>(
-                            value: account.id,
-                            child: Text(account.name),
-                          );
-                        }).toList(),
-                        onChanged: saving
-                            ? null
-                            : (value) {
-                                setDialogState(() {
-                                  selectedAccountId = value;
-                                });
-                              },
+                      decoration: const InputDecoration(
+                        labelText: 'Total Payment (Taka)',
+                        prefixText: '৳ ',
+                        border: OutlineInputBorder(),
                       ),
-                      const SizedBox(height: 14),
-                      OutlinedButton.icon(
-                        onPressed: saving
-                            ? null
-                            : () async {
-                                final pickedDate =
-                                    await showDatePicker(
-                                  context: context,
-                                  initialDate: paymentDate,
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime.now().add(
-                                    const Duration(days: 365),
-                                  ),
-                                );
-
-                                if (pickedDate != null) {
-                                  setDialogState(() {
-                                    paymentDate = pickedDate;
-                                  });
-                                }
-                              },
-                        icon: const Icon(Icons.calendar_today),
-                        label: Text(
-                          'Date: ${paymentDate.day}/'
-                          '${paymentDate.month}/'
-                          '${paymentDate.year}',
-                        ),
+                      onChanged: (_) {
+                        setDialogState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      value: selectedAccountId,
+                      decoration: const InputDecoration(
+                        labelText: 'Payment Account',
+                        border: OutlineInputBorder(),
                       ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: noteController,
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          labelText: 'Note (Optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Divider(),
-                      const Text(
-                        'Payment Allocation',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text(
-                          'Adjust allocations manually',
-                        ),
-                        subtitle: Text(
-                          manualMode
-                              ? 'Edit the amount for each purchase.'
-                              : 'Oldest unpaid purchases are paid first.',
-                        ),
-                        value: manualMode,
-                        onChanged: saving
-                            ? null
-                            : (value) {
-                                setDialogState(() {
-                                  if (value) {
-                                    updateAutomaticFields();
-                                  } else {
-                                    updateAutomaticFields();
-                                  }
-
-                                  manualMode = value;
-                                });
-                              },
-                      ),
-                      const SizedBox(height: 8),
-                      ..._oldestFirst.map((item) {
-                        final outstanding =
-                            _outstandingAmounts[item.due.id] ?? 0;
-
-                        final allocated =
-                            displayedAllocations[item.due.id] ?? 0;
-
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: 14,
-                          ),
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.purchase.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                'Outstanding: ${formatMoney(outstanding)}',
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              TextField(
-                                controller:
-                                    allocationControllers[
-                                        item.due.id],
-                                readOnly: !manualMode,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                decoration: InputDecoration(
-                                  labelText: 'Allocated payment (Taka)',
-                                  prefixText: '৳ ',
-                                  border: const OutlineInputBorder(),
-                                  filled: !manualMode,
-                                  helperText: manualMode
-                                      ? 'Maximum: ${formatMoney(outstanding)}'
-                                      : 'Automatically allocated',
-                                ),
-                                onChanged: (_) {
-                                  setDialogState(() {});
-                                },
-                              ),
-                              if (!manualMode && allocated > 0)
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Text(
-                                    formatMoney(allocated),
-                                    style: const TextStyle(
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
+                      items: accounts.map((account) {
+                        return DropdownMenuItem<int>(
+                          value: account.id,
+                          child: Text(account.name),
                         );
-                      }),
-                      const Divider(),
-                      Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Allocated total',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            formatMoney(allocatedTotal),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: allocationsMatch
-                                  ? Colors.green
-                                  : Colors.orange,
-                            ),
-                          ),
-                        ],
+                      }).toList(),
+                      onChanged: saving
+                          ? null
+                          : (value) {
+                              setDialogState(() {
+                                selectedAccountId = value;
+                              });
+                            },
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              final pickedDate =
+                                  await showDatePicker(
+                                context: context,
+                                initialDate: paymentDate,
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 365),
+                                ),
+                              );
+
+                              if (pickedDate != null) {
+                                setDialogState(() {
+                                  paymentDate = pickedDate;
+                                });
+                              }
+                            },
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        'Date: ${paymentDate.day}/'
+                        '${paymentDate.month}/'
+                        '${paymentDate.year}',
                       ),
-                      if (!amountIsValid)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Text(
-                            'Enter an amount greater than zero and no more than the store outstanding.',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      if (amountIsValid && !allocationsMatch)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Text(
-                            'Allocated total must equal the total payment amount.',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: noteController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Note (Optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               actions: [
@@ -1006,41 +761,16 @@ class _StoreOutstandingPageState
                 ),
                 FilledButton(
                   onPressed: saving ||
-                          !amountIsValid ||
-                          !allocationsMatch ||
+                          !validAmount ||
                           selectedAccountId == null
                       ? null
                       : () async {
-                          final amountPaisa =
-                              getEnteredAmount();
-
-                          Map<int, int>? manualAllocations;
-
-                          if (manualMode) {
-                            manualAllocations = {};
-
-                            for (final item in _oldestFirst) {
-                              final value = _parsePaisa(
-                                allocationControllers[
-                                        item.due.id]!
-                                    .text,
-                              );
-
-                              if (value == null) {
-                                return;
-                              }
-
-                              manualAllocations[item.due.id] =
-                                  value;
-                            }
-                          }
-
                           setDialogState(() {
                             saving = true;
                           });
 
                           try {
-                            final result =
+                            final paymentResult =
                                 await database.addStoreDuePayment(
                               storeName: widget.storeName,
                               accountId: selectedAccountId!,
@@ -1049,13 +779,12 @@ class _StoreOutstandingPageState
                               note: noteController.text.trim().isEmpty
                                   ? null
                                   : noteController.text.trim(),
-                              allocations: manualAllocations,
                             );
 
                             if (dialogContext.mounted) {
                               Navigator.pop(
                                 dialogContext,
-                                result,
+                                paymentResult,
                               );
                             }
                           } catch (error) {
@@ -1068,7 +797,7 @@ class _StoreOutstandingPageState
                                   .showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    'Could not save store payment: $error',
+                                    'Could not save payment: $error',
                                   ),
                                 ),
                               );
@@ -1095,14 +824,10 @@ class _StoreOutstandingPageState
     amountController.dispose();
     noteController.dispose();
 
-    for (final controller in allocationControllers.values) {
-      controller.dispose();
-    }
-
-    if (allocationsResult == null || !mounted) return;
+    if (result == null || !mounted) return;
 
     setState(() {
-      for (final entry in allocationsResult.entries) {
+      for (final entry in result.entries) {
         final remaining =
             (_outstandingAmounts[entry.key] ?? 0) -
                 entry.value;
@@ -1322,6 +1047,7 @@ class _StoreOutstandingPageState
 }
 
 // STORE IMAGE
+
 class _StoreImage extends StatelessWidget {
   final String? imagePath;
   final double size;
@@ -1366,6 +1092,7 @@ class _StoreImage extends StatelessWidget {
 }
 
 // AMOUNT ROW
+
 class _AmountRow extends StatelessWidget {
   final String label;
   final int amount;
@@ -1407,6 +1134,7 @@ class _AmountRow extends StatelessWidget {
 }
 
 // EMPTY DUES
+
 class _EmptyDues extends StatelessWidget {
   const _EmptyDues();
 
@@ -1443,6 +1171,7 @@ class _EmptyDues extends StatelessWidget {
 }
 
 // PUBLIC DUE ITEM MODEL
+
 class DueItem {
   final Due due;
   final Transaction purchase;
