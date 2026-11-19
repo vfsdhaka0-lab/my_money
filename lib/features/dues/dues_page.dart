@@ -1,8 +1,8 @@
-
 // ignore_for_file: deprecated_member_use
 
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/database/app_database.dart';
@@ -43,6 +43,18 @@ class DuesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const PaymentHistoryPage(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.history),
+        label: const Text('Payment History'),
+      ),
       body: StreamBuilder<List<DuePayment>>(
         stream: database.watchAllDuePayments(),
         builder: (context, paymentSnapshot) {
@@ -283,6 +295,211 @@ class DuesPage extends StatelessWidget {
                 },
               );
             },
+          );
+        },
+      ),
+    );
+  }
+}
+
+// PAYMENT HISTORY PAGE
+
+class PaymentHistoryPage extends StatelessWidget {
+  const PaymentHistoryPage({super.key});
+
+  Future<List<TypedResult>> _loadPaymentHistory() async {
+    final query = database.select(database.duePayments).join([
+      innerJoin(
+        database.dues,
+        database.dues.id.equalsExp(
+          database.duePayments.dueId,
+        ),
+      ),
+      innerJoin(
+        database.transactions,
+        database.transactions.id.equalsExp(
+          database.dues.transactionId,
+        ),
+      ),
+      innerJoin(
+        database.accounts,
+        database.accounts.id.equalsExp(
+          database.duePayments.accountId,
+        ),
+      ),
+    ]);
+
+    final rows = await query.get();
+
+    rows.sort((a, b) {
+      final first = a.readTable(database.duePayments);
+      final second = b.readTable(database.duePayments);
+
+      return second.date.compareTo(first.date);
+    });
+
+    return rows;
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        title: const Text(
+          'Payment History',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: FutureBuilder<List<TypedResult>>(
+        future: _loadPaymentHistory(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState ==
+              ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text('Could not load payment history.'),
+            );
+          }
+
+          final rows = snapshot.data ?? [];
+
+          if (rows.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.history,
+                    size: 55,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'No payment history yet.',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final totalPaid = rows.fold<int>(
+            0,
+            (total, row) {
+              final payment =
+                  row.readTable(database.duePayments);
+
+              return total + payment.amountPaisa;
+            },
+          );
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
+                color: Theme.of(context).colorScheme.primary,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Total Due Payments',
+                        style: TextStyle(
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        formatMoney(totalPaid),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        '${rows.length} payment(s)',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              ...rows.map((row) {
+                final payment =
+                    row.readTable(database.duePayments);
+
+                final due = row.readTable(database.dues);
+
+                final purchase =
+                    row.readTable(database.transactions);
+
+                final account =
+                    row.readTable(database.accounts);
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(14),
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.green.withValues(
+                        alpha: 0.12,
+                      ),
+                      child: const Icon(
+                        Icons.payments,
+                        color: Colors.green,
+                      ),
+                    ),
+                    title: Text(
+                      formatMoney(payment.amountPaisa),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                        fontSize: 17,
+                      ),
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 7),
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          Text('Store: ${due.storeName}'),
+                          Text('Purchase: ${purchase.title}'),
+                          Text('Account: ${account.name}'),
+                          Text(
+                            'Date: ${_formatDate(payment.date)}',
+                          ),
+                          if (payment.note != null &&
+                              payment.note!.trim().isNotEmpty)
+                            Text('Note: ${payment.note}'),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
           );
         },
       ),
