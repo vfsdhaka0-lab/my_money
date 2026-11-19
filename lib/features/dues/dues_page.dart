@@ -1,5 +1,5 @@
 
- // ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'dart:io';
 
@@ -12,7 +12,7 @@ import '../../shared/database_instance.dart';
 class DuesPage extends StatelessWidget {
   const DuesPage({super.key});
 
-  Future<List<_DueItem>> _loadDueItems(
+  Future<List<DueItem>> _loadDueItems(
     List<Due> dues,
   ) async {
     final items = await Future.wait(
@@ -29,7 +29,7 @@ class DuesPage extends StatelessWidget {
           return null;
         }
 
-        return _DueItem(
+        return DueItem(
           due: due,
           purchase: purchase,
           outstanding: outstanding,
@@ -37,7 +37,7 @@ class DuesPage extends StatelessWidget {
       }),
     );
 
-    return items.whereType<_DueItem>().toList();
+    return items.whereType<DueItem>().toList();
   }
 
   @override
@@ -83,7 +83,7 @@ class DuesPage extends StatelessWidget {
 
               final stores = storeSnapshot.data ?? [];
 
-              return FutureBuilder<List<_DueItem>>(
+              return FutureBuilder<List<DueItem>>(
                 future: _loadDueItems(dues),
                 builder: (context, dueSnapshot) {
                   if (dueSnapshot.connectionState ==
@@ -109,7 +109,7 @@ class DuesPage extends StatelessWidget {
                     );
                   }
 
-                  final Map<String, List<_DueItem>>
+                  final Map<String, List<DueItem>>
                       groupedDues = {};
 
                   for (final item in items) {
@@ -274,7 +274,7 @@ class DuesPage extends StatelessWidget {
 
 class StoreOutstandingPage extends StatelessWidget {
   final String storeName;
-  final List<_DueItem> items;
+  final List<DueItem> items;
   final String? imagePath;
 
   const StoreOutstandingPage({
@@ -463,7 +463,7 @@ class _StoreImage extends StatelessWidget {
             ? Image.file(
                 File(imagePath!),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
+                errorBuilder: (_, _, _) =>
                     _placeholder(),
               )
             : _placeholder(),
@@ -559,12 +559,12 @@ class _EmptyDues extends StatelessWidget {
   }
 }
 
-class _DueItem {
+class DueItem {
   final Due due;
   final Transaction purchase;
   final int outstanding;
 
-  const _DueItem({
+  const DueItem({
     required this.due,
     required this.purchase,
     required this.outstanding,
