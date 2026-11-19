@@ -329,7 +329,7 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  // ADD PAYMENT TOWARDS AN EXISTING DUE
+  // ADD PAYMENT TOWARDS AN INDIVIDUAL PURCHASE
   Future<void> addDuePayment({
     required int dueId,
     required int accountId,
@@ -371,7 +371,7 @@ class AppDatabase extends _$AppDatabase {
           due.initialPaidPaisa -
           alreadyPaid;
 
-      if (amountPaisa > outstanding) {
+      if (outstanding <= 0 || amountPaisa > outstanding) {
         throw StateError(
           'Payment exceeds the outstanding due.',
         );
@@ -396,6 +396,190 @@ class AppDatabase extends _$AppDatabase {
       );
     });
   }
+
+  // PAY AN ENTIRE STORE
+  //
+  // If allocations is null:
+  // Automatically pays the oldest unpaid purchases first.
+  //
+  // If allocations is supplied:
+  // Uses the manually selected amount for each due ID.
+  //
+  // Returns the actual allocation:
+  // {dueId: amountPaidPaisa}
+  Future<Map<int, int>> addStoreDuePayment({
+    required String storeName,
+    required int accountId,
+    required int amountPaisa,
+    required DateTime date,
+    String? note,
+    Map<int, int>? allocations,
+  }) async {
+    if (storeName.trim().isEmpty || amountPaisa <= 0) {
+      throw ArgumentError('Invalid store payment information.');
+    }
+
+    return transaction(() async {
+      final account = await (select(accounts)
+            ..where((a) => a.id.equals(accountId)))
+          .getSingleOrNull();
+
+      if (account == null) {
+        throw StateError('Account not found.');
+      }
+
+      final storeDues = await (select(dues)
+            ..where((d) => d.storeName.equals(storeName.trim())))
+          .get();
+
+      final balances = <_StoreDueBalance>[];
+
+      for (final due in storeDues) {
+        final purchase = await (select(transactions)
+              ..where((t) => t.id.equals(due.transactionId)))
+            .getSingleOrNull();
+
+        if (purchase == null) {
+          continue;
+        }
+
+        final previousPayments = await (select(duePayments)
+              ..where((p) => p.dueId.equals(due.id)))
+            .get();
+
+        final alreadyPaid = previousPayments.fold<int>(
+          0,
+          (total, payment) => total + payment.amountPaisa,
+        );
+
+        final outstanding = purchase.amountPaisa -
+            due.initialPaidPaisa -
+            alreadyPaid;
+
+        if (outstanding > 0) {
+          balances.add(
+            _StoreDueBalance(
+              dueId: due.id,
+              purchaseDate: purchase.date,
+              outstanding: outstanding,
+            ),
+          );
+        }
+      }
+
+      // Oldest purchase first.
+      balances.sort((a, b) {
+        final dateComparison =
+            a.purchaseDate.compareTo(b.purchaseDate);
+
+        if (dateComparison != 0) {
+          return dateComparison;
+        }
+
+        return a.dueId.compareTo(b.dueId);
+      });
+
+      final totalOutstanding = balances.fold<int>(
+        0,
+        (total, item) => total + item.outstanding,
+      );
+
+      if (amountPaisa > totalOutstanding) {
+        throw StateError(
+          'Payment exceeds the store outstanding amount.',
+        );
+      }
+
+      final result = <int, int>{};
+
+      if (allocations == null) {
+        // AUTOMATIC OLDEST-FIRST ALLOCATION
+        var remaining = amountPaisa;
+
+        for (final item in balances) {
+          if (remaining <= 0) break;
+
+          final payment = remaining > item.outstanding
+              ? item.outstanding
+              : remaining;
+
+          result[item.dueId] = payment;
+          remaining -= payment;
+        }
+      } else {
+        // MANUAL ALLOCATION
+        final validDueIds =
+            balances.map((item) => item.dueId).toSet();
+
+        for (final entry in allocations.entries) {
+          if (!validDueIds.contains(entry.key)) {
+            throw StateError(
+              'Invalid purchase selected for allocation.',
+            );
+          }
+
+          if (entry.value < 0) {
+            throw StateError(
+              'Allocation cannot be negative.',
+            );
+          }
+
+          final balance = balances.firstWhere(
+            (item) => item.dueId == entry.key,
+          );
+
+          if (entry.value > balance.outstanding) {
+            throw StateError(
+              'Allocation exceeds a purchase outstanding amount.',
+            );
+          }
+
+          if (entry.value > 0) {
+            result[entry.key] = entry.value;
+          }
+        }
+
+        final allocatedTotal = result.values.fold<int>(
+          0,
+          (total, value) => total + value,
+        );
+
+        if (allocatedTotal != amountPaisa) {
+          throw StateError(
+            'The allocations must equal the total payment.',
+          );
+        }
+      }
+
+      // SAVE EACH PURCHASE PAYMENT SEPARATELY.
+      for (final entry in result.entries) {
+        await into(duePayments).insert(
+          DuePaymentsCompanion.insert(
+            dueId: entry.key,
+            accountId: accountId,
+            amountPaisa: entry.value,
+            date: date,
+            note: Value(note),
+          ),
+        );
+      }
+
+      return result;
+    });
+  }
+}
+
+// STORE DUE BALANCE HELPER
+class _StoreDueBalance {
+  final int dueId;
+  final DateTime purchaseDate;
+  final int outstanding;
+
+  const _StoreDueBalance({
+    required this.dueId,
+    required this.purchaseDate,
+    required this.outstanding,
+  });
 }
 
 // DATABASE CONNECTION
