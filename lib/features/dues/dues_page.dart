@@ -43,220 +43,242 @@ class DuesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<List<Due>>(
-        stream: database.watchDues(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState ==
+      body: StreamBuilder<List<DuePayment>>(
+        stream: database.watchAllDuePayments(),
+        builder: (context, paymentSnapshot) {
+          if (paymentSnapshot.connectionState ==
               ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(),
             );
           }
 
-          if (snapshot.hasError) {
+          if (paymentSnapshot.hasError) {
             return const Center(
-              child: Text('Could not load dues.'),
+              child: Text('Could not load payment records.'),
             );
           }
 
-          final dues = snapshot.data ?? [];
-
-          if (dues.isEmpty) {
-            return const _EmptyDues();
-          }
-
-          return StreamBuilder<List<Store>>(
-            stream: database.watchStores(),
-            builder: (context, storeSnapshot) {
-              if (storeSnapshot.connectionState ==
+          return StreamBuilder<List<Due>>(
+            stream: database.watchDues(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState ==
                   ConnectionState.waiting) {
                 return const Center(
                   child: CircularProgressIndicator(),
                 );
               }
 
-              if (storeSnapshot.hasError) {
+              if (snapshot.hasError) {
                 return const Center(
-                  child: Text('Could not load stores.'),
+                  child: Text('Could not load dues.'),
                 );
               }
 
-              final stores = storeSnapshot.data ?? [];
+              final dues = snapshot.data ?? [];
 
-              return FutureBuilder<List<DueItem>>(
-                future: _loadDueItems(dues),
-                builder: (context, dueSnapshot) {
-                  if (dueSnapshot.connectionState ==
+              if (dues.isEmpty) {
+                return const _EmptyDues();
+              }
+
+              return StreamBuilder<List<Store>>(
+                stream: database.watchStores(),
+                builder: (context, storeSnapshot) {
+                  if (storeSnapshot.connectionState ==
                       ConnectionState.waiting) {
                     return const Center(
                       child: CircularProgressIndicator(),
                     );
                   }
 
-                  if (dueSnapshot.hasError) {
+                  if (storeSnapshot.hasError) {
                     return const Center(
-                      child: Text(
-                        'Could not calculate outstanding dues.',
-                      ),
+                      child: Text('Could not load stores.'),
                     );
                   }
 
-                  final items = dueSnapshot.data ?? [];
+                  final stores = storeSnapshot.data ?? [];
 
-                  if (items.isEmpty) {
-                    return const Center(
-                      child: Text('All dues have been paid.'),
-                    );
-                  }
-
-                  final Map<String, List<DueItem>>
-                      groupedDues = {};
-
-                  for (final item in items) {
-                    groupedDues
-                        .putIfAbsent(
-                          item.due.storeName,
-                          () => [],
-                        )
-                        .add(item);
-                  }
-
-                  final totalDue = items.fold<int>(
-                    0,
-                    (total, item) =>
-                        total + item.outstanding,
-                  );
-
-                  return ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      Card(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary,
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Total Outstanding Due',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                formatMoney(totalDue),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 27,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${groupedDues.length} stores • '
-                                '${items.length} purchases',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Store-wise Outstanding',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ...groupedDues.entries.map((entry) {
-                        final storeItems = entry.value;
-
-                        final storeTotal =
-                            storeItems.fold<int>(
-                          0,
-                          (total, item) =>
-                              total + item.outstanding,
+                  return FutureBuilder<List<DueItem>>(
+                    future: _loadDueItems(dues),
+                    builder: (context, dueSnapshot) {
+                      if (dueSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
                         );
+                      }
 
-                        Store? store;
-
-                        for (final savedStore in stores) {
-                          if (savedStore.name.trim().toLowerCase() ==
-                              entry.key.trim().toLowerCase()) {
-                            store = savedStore;
-                            break;
-                          }
-                        }
-
-                        return Card(
-                          margin: const EdgeInsets.only(
-                            bottom: 10,
+                      if (dueSnapshot.hasError) {
+                        return const Center(
+                          child: Text(
+                            'Could not calculate outstanding dues.',
                           ),
-                          clipBehavior: Clip.antiAlias,
-                          child: ListTile(
-                            contentPadding:
-                                const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            leading: _StoreImage(
-                              imagePath: store?.imagePath,
-                            ),
-                            title: Text(
-                              entry.key,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                        );
+                      }
+
+                      final items = dueSnapshot.data ?? [];
+
+                      if (items.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'All dues have been paid.',
+                          ),
+                        );
+                      }
+
+                      final Map<String, List<DueItem>>
+                          groupedDues = {};
+
+                      for (final item in items) {
+                        groupedDues
+                            .putIfAbsent(
+                              item.due.storeName,
+                              () => [],
+                            )
+                            .add(item);
+                      }
+
+                      final totalDue = items.fold<int>(
+                        0,
+                        (total, item) =>
+                            total + item.outstanding,
+                      );
+
+                      return ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          Card(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary,
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Total Outstanding Due',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    formatMoney(totalDue),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 27,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${groupedDues.length} stores • '
+                                    '${items.length} purchases',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            subtitle: Text(
-                              '${storeItems.length} unpaid purchase(s)',
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Store-wise Outstanding',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
                             ),
-                            trailing: Column(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.center,
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.end,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  formatMoney(storeTotal),
+                          ),
+                          const SizedBox(height: 10),
+                          ...groupedDues.entries.map((entry) {
+                            final storeItems = entry.value;
+
+                            final storeTotal =
+                                storeItems.fold<int>(
+                              0,
+                              (total, item) =>
+                                  total + item.outstanding,
+                            );
+
+                            Store? store;
+
+                            for (final savedStore in stores) {
+                              if (savedStore.name
+                                      .trim()
+                                      .toLowerCase() ==
+                                  entry.key.trim().toLowerCase()) {
+                                store = savedStore;
+                                break;
+                              }
+                            }
+
+                            return Card(
+                              margin: const EdgeInsets.only(
+                                bottom: 10,
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: ListTile(
+                                contentPadding:
+                                    const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                leading: _StoreImage(
+                                  imagePath: store?.imagePath,
+                                ),
+                                title: Text(
+                                  entry.key,
                                   style: const TextStyle(
-                                    color: Colors.orange,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 15,
+                                subtitle: Text(
+                                  '${storeItems.length} unpaid purchase(s)',
                                 ),
-                              ],
-                            ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      StoreOutstandingPage(
-                                    storeName: entry.key,
-                                    items: storeItems,
-                                    imagePath: store?.imagePath,
-                                  ),
+                                trailing: Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.end,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      formatMoney(storeTotal),
+                                      style: const TextStyle(
+                                        color: Colors.orange,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 15,
+                                    ),
+                                  ],
                                 ),
-                              );
-                            },
-                          ),
-                        );
-                      }),
-                    ],
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          StoreOutstandingPage(
+                                        storeName: entry.key,
+                                        items: storeItems,
+                                        imagePath: store?.imagePath,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          }),
+                        ],
+                      );
+                    },
                   );
                 },
               );
@@ -361,7 +383,6 @@ class _StoreOutstandingPageState
                       ),
                     ),
                     const SizedBox(height: 18),
-
                     TextField(
                       controller: amountController,
                       keyboardType:
@@ -376,7 +397,6 @@ class _StoreOutstandingPageState
                       ),
                     ),
                     const SizedBox(height: 14),
-
                     DropdownButtonFormField<int>(
                       value: selectedAccountId,
                       decoration: const InputDecoration(
@@ -398,7 +418,6 @@ class _StoreOutstandingPageState
                             },
                     ),
                     const SizedBox(height: 14),
-
                     OutlinedButton.icon(
                       onPressed: saving
                           ? null
@@ -427,7 +446,6 @@ class _StoreOutstandingPageState
                       ),
                     ),
                     const SizedBox(height: 14),
-
                     TextField(
                       controller: noteController,
                       maxLines: 2,
@@ -450,8 +468,7 @@ class _StoreOutstandingPageState
                   onPressed: saving
                       ? null
                       : () async {
-                          final amount =
-                              double.tryParse(
+                          final amount = double.tryParse(
                             amountController.text.trim(),
                           );
 
