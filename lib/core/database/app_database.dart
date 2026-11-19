@@ -63,6 +63,65 @@ class AppDatabase extends _$AppDatabase {
         },
       );
 
+  // ACCOUNT BALANCE VALIDATION
+  //
+  // Only accounts whose name contains "bank" can go negative.
+  // All other accounts must have enough balance before an
+  // outgoing payment can be saved.
+  //
+  // Existing negative balances are not changed. They simply
+  // cannot be used for additional outgoing payments.
+  Future<void> _checkAccountBalance({
+    required int accountId,
+    required int outgoingAmountPaisa,
+  }) async {
+    if (outgoingAmountPaisa <= 0) {
+      throw ArgumentError('Payment must be greater than zero.');
+    }
+
+    final account = await (select(accounts)
+          ..where((a) => a.id.equals(accountId)))
+        .getSingleOrNull();
+
+    if (account == null) {
+      throw StateError('Account not found.');
+    }
+
+    // Bank accounts are allowed to have negative balances.
+    if (account.name.trim().toLowerCase().contains('bank')) {
+      return;
+    }
+
+    final accountTransactions = await (select(transactions)
+          ..where((t) => t.accountId.equals(accountId)))
+        .get();
+
+    var currentBalance = account.openingBalancePaisa;
+
+    for (final item in accountTransactions) {
+      if (item.type == 'income') {
+        currentBalance += item.paidAmountPaisa;
+      } else if (item.type == 'expense') {
+        currentBalance -= item.paidAmountPaisa;
+      }
+    }
+
+    final accountPayments = await (select(duePayments)
+          ..where((payment) => payment.accountId.equals(accountId)))
+        .get();
+
+    for (final payment in accountPayments) {
+      currentBalance -= payment.amountPaisa;
+    }
+
+    if (currentBalance < outgoingAmountPaisa) {
+      throw StateError(
+        'Insufficient balance. '
+        'Available balance: ${currentBalance / 100} Tk.',
+      );
+    }
+  }
+
   // ACCOUNTS
   Stream<List<Account>> watchAccounts() {
     return select(accounts).watch();
@@ -92,7 +151,7 @@ class AppDatabase extends _$AppDatabase {
       }
 
       final linkedPayments = await (select(duePayments)
-            ..where((p) => p.accountId.equals(accountId)))
+            ..where((payment) => payment.accountId.equals(accountId)))
           .get();
 
       if (linkedPayments.isNotEmpty) {
@@ -185,19 +244,28 @@ class AppDatabase extends _$AppDatabase {
     required DateTime date,
     int? categoryId,
     String? note,
-  }) {
-    return into(transactions).insert(
-      TransactionsCompanion.insert(
-        accountId: accountId,
-        categoryId: Value(categoryId),
-        title: title,
-        amountPaisa: amountPaisa,
-        paidAmountPaisa: Value(amountPaisa),
-        type: type,
-        date: date,
-        note: Value(note),
-      ),
-    );
+  }) async {
+    return transaction(() async {
+      if (type == 'expense') {
+        await _checkAccountBalance(
+          accountId: accountId,
+          outgoingAmountPaisa: amountPaisa,
+        );
+      }
+
+      return into(transactions).insert(
+        TransactionsCompanion.insert(
+          accountId: accountId,
+          categoryId: Value(categoryId),
+          title: title,
+          amountPaisa: amountPaisa,
+          paidAmountPaisa: Value(amountPaisa),
+          type: type,
+          date: date,
+          note: Value(note),
+        ),
+      );
+    });
   }
 
   // ADD PURCHASE WITH PARTIAL OR FULL DUE
@@ -219,6 +287,13 @@ class AppDatabase extends _$AppDatabase {
     }
 
     return transaction(() async {
+      if (paidAmountPaisa > 0) {
+        await _checkAccountBalance(
+          accountId: accountId,
+          outgoingAmountPaisa: paidAmountPaisa,
+        );
+      }
+
       final transactionId = await into(transactions).insert(
         TransactionsCompanion.insert(
           accountId: accountId,
@@ -256,7 +331,7 @@ class AppDatabase extends _$AppDatabase {
 
       for (final due in relatedDues) {
         await (delete(duePayments)
-              ..where((p) => p.dueId.equals(due.id)))
+              ..where((payment) => payment.dueId.equals(due.id)))
             .go();
       }
 
@@ -298,7 +373,7 @@ class AppDatabase extends _$AppDatabase {
     }
 
     final payments = await (select(duePayments)
-          ..where((p) => p.dueId.equals(dueId)))
+          ..where((payment) => payment.dueId.equals(dueId)))
         .get();
 
     final totalPayments = payments.fold<int>(
@@ -314,9 +389,9 @@ class AppDatabase extends _$AppDatabase {
   // DUE PAYMENTS
   Stream<List<DuePayment>> watchDuePayments(int dueId) {
     return (select(duePayments)
-          ..where((p) => p.dueId.equals(dueId))
+          ..where((payment) => payment.dueId.equals(dueId))
           ..orderBy([
-            (p) => OrderingTerm.desc(p.date),
+            (payment) => OrderingTerm.desc(payment.date),
           ]))
         .watch();
   }
@@ -324,7 +399,7 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<DuePayment>> watchAllDuePayments() {
     return (select(duePayments)
           ..orderBy([
-            (p) => OrderingTerm.desc(p.date),
+            (payment) => OrderingTerm.desc(payment.date),
           ]))
         .watch();
   }
@@ -359,7 +434,7 @@ class AppDatabase extends _$AppDatabase {
       }
 
       final previousPayments = await (select(duePayments)
-            ..where((p) => p.dueId.equals(dueId)))
+            ..where((payment) => payment.dueId.equals(dueId)))
           .get();
 
       final alreadyPaid = previousPayments.fold<int>(
@@ -377,13 +452,10 @@ class AppDatabase extends _$AppDatabase {
         );
       }
 
-      final account = await (select(accounts)
-            ..where((a) => a.id.equals(accountId)))
-          .getSingleOrNull();
-
-      if (account == null) {
-        throw StateError('Account not found.');
-      }
+      await _checkAccountBalance(
+        accountId: accountId,
+        outgoingAmountPaisa: amountPaisa,
+      );
 
       await into(duePayments).insert(
         DuePaymentsCompanion.insert(
@@ -420,13 +492,10 @@ class AppDatabase extends _$AppDatabase {
     }
 
     return transaction(() async {
-      final account = await (select(accounts)
-            ..where((a) => a.id.equals(accountId)))
-          .getSingleOrNull();
-
-      if (account == null) {
-        throw StateError('Account not found.');
-      }
+      await _checkAccountBalance(
+        accountId: accountId,
+        outgoingAmountPaisa: amountPaisa,
+      );
 
       final storeDues = await (select(dues)
             ..where((d) => d.storeName.equals(storeName.trim())))
@@ -444,7 +513,7 @@ class AppDatabase extends _$AppDatabase {
         }
 
         final previousPayments = await (select(duePayments)
-              ..where((p) => p.dueId.equals(due.id)))
+              ..where((payment) => payment.dueId.equals(due.id)))
             .get();
 
         final alreadyPaid = previousPayments.fold<int>(
