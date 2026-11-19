@@ -2,7 +2,7 @@
 
 import 'dart:io';
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 
 import '../../core/database/app_database.dart';
