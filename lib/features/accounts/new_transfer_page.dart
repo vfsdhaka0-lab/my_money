@@ -1,5 +1,5 @@
 
-// ignore_for_file: deprecated_member_use
+ // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 
@@ -43,7 +43,7 @@ class _NewTransferPageState extends State<NewTransferPage> {
       lastDate: DateTime(2100),
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         selectedDate = picked;
       });
@@ -213,6 +213,7 @@ class _NewTransferPageState extends State<NewTransferPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 12),
+
                 const Text(
                   'Transfer money between your accounts',
                   textAlign: TextAlign.center,
@@ -222,7 +223,11 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+
                 const SizedBox(height: 28),
+
+                // FROM ACCOUNT
+
                 DropdownButtonFormField<int>(
                   value: fromAccountId,
                   decoration: const InputDecoration(
@@ -240,8 +245,10 @@ class _NewTransferPageState extends State<NewTransferPage> {
                       ? null
                       : (value) {
                           if (value == null) return;
+
                           setState(() {
                             fromAccountId = value;
+
                             if (toAccountId == value) {
                               toAccountId = accounts
                                   .firstWhere(
@@ -252,7 +259,11 @@ class _NewTransferPageState extends State<NewTransferPage> {
                           });
                         },
                 ),
+
                 const SizedBox(height: 16),
+
+                // TRANSFER ICON
+
                 const Center(
                   child: Icon(
                     Icons.arrow_downward_rounded,
@@ -260,7 +271,11 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     size: 32,
                   ),
                 ),
+
                 const SizedBox(height: 16),
+
+                // TO ACCOUNT
+
                 DropdownButtonFormField<int>(
                   value: toAccountId,
                   decoration: const InputDecoration(
@@ -280,12 +295,17 @@ class _NewTransferPageState extends State<NewTransferPage> {
                       ? null
                       : (value) {
                           if (value == null) return;
+
                           setState(() {
                             toAccountId = value;
                           });
                         },
                 ),
+
                 const SizedBox(height: 24),
+
+                // AMOUNT
+
                 TextField(
                   controller: amountController,
                   enabled: !isSaving,
@@ -300,7 +320,11 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
+                // DATE
+
                 OutlinedButton.icon(
                   onPressed: isSaving ? null : selectDate,
                   icon: const Icon(Icons.calendar_month),
@@ -313,7 +337,11 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
+                // NOTE
+
                 TextField(
                   controller: noteController,
                   enabled: !isSaving,
@@ -325,7 +353,11 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+
                 const SizedBox(height: 30),
+
+                // SAVE TRANSFER
+
                 SizedBox(
                   height: 52,
                   child: FilledButton.icon(
