@@ -13,6 +13,8 @@ import 'tables/dues.dart';
 import 'tables/due_payments.dart';
 import 'tables/stores.dart';
 import 'tables/transfers.dart';
+import 'tables/borrow_lends.dart';
+import 'tables/borrow_lend_payments.dart';
 
 part 'app_database.g.dart';
 
@@ -25,13 +27,15 @@ part 'app_database.g.dart';
     DuePayments,
     Stores,
     Transfers,
+    BorrowLends,
+    BorrowLendPayments,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   // DATABASE MIGRATION
   @override
@@ -65,6 +69,10 @@ class AppDatabase extends _$AppDatabase {
 
           if (from < 5) {
             await m.createTable(transfers);
+          }
+          if (from < 6) {
+            await m.createTable(borrowLends);
+            await m.createTable(borrowLendPayments);
           }
         },
       );
