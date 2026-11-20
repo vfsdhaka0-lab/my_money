@@ -62,7 +62,6 @@ class _NewTransferPageState extends State<NewTransferPage> {
     }
 
     final amountText = amountController.text.trim();
-
     final amount = double.tryParse(amountText);
 
     if (amount == null || !amount.isFinite || amount <= 0) {
@@ -141,8 +140,16 @@ class _NewTransferPageState extends State<NewTransferPage> {
       backgroundColor: background,
       appBar: AppBar(
         title: const Text('New Transfer'),
-        backgroundColor: primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+        toolbarHeight: 56,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(30),
+          ),
+        ),
       ),
       body: StreamBuilder<List<Account>>(
         stream: database.watchAccounts(),
@@ -206,7 +213,6 @@ class _NewTransferPageState extends State<NewTransferPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 12),
-
                 const Text(
                   'Transfer money between your accounts',
                   textAlign: TextAlign.center,
@@ -216,11 +222,7 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-
                 const SizedBox(height: 28),
-
-                // FROM ACCOUNT
-
                 DropdownButtonFormField<int>(
                   value: fromAccountId,
                   decoration: const InputDecoration(
@@ -238,10 +240,8 @@ class _NewTransferPageState extends State<NewTransferPage> {
                       ? null
                       : (value) {
                           if (value == null) return;
-
                           setState(() {
                             fromAccountId = value;
-
                             if (toAccountId == value) {
                               toAccountId = accounts
                                   .firstWhere(
@@ -252,11 +252,7 @@ class _NewTransferPageState extends State<NewTransferPage> {
                           });
                         },
                 ),
-
                 const SizedBox(height: 16),
-
-                // TRANSFER ICON
-
                 const Center(
                   child: Icon(
                     Icons.arrow_downward_rounded,
@@ -264,11 +260,7 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     size: 32,
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
-                // TO ACCOUNT
-
                 DropdownButtonFormField<int>(
                   value: toAccountId,
                   decoration: const InputDecoration(
@@ -288,17 +280,12 @@ class _NewTransferPageState extends State<NewTransferPage> {
                       ? null
                       : (value) {
                           if (value == null) return;
-
                           setState(() {
                             toAccountId = value;
                           });
                         },
                 ),
-
                 const SizedBox(height: 24),
-
-                // AMOUNT
-
                 TextField(
                   controller: amountController,
                   enabled: !isSaving,
@@ -313,11 +300,7 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 18),
-
-                // DATE
-
                 OutlinedButton.icon(
                   onPressed: isSaving ? null : selectDate,
                   icon: const Icon(Icons.calendar_month),
@@ -330,11 +313,7 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 18),
-
-                // NOTE
-
                 TextField(
                   controller: noteController,
                   enabled: !isSaving,
@@ -346,11 +325,7 @@ class _NewTransferPageState extends State<NewTransferPage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
-                // SAVE TRANSFER
-
                 SizedBox(
                   height: 52,
                   child: FilledButton.icon(
