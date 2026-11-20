@@ -164,7 +164,7 @@ class _NewTransferPageState extends State<NewTransferPage> {
           if (accounts.length < 2) {
             return const Center(
               child: Padding(
-                padding: EdgeInsets.all(30),
+                padding: EdgeInsets.all(24),
                 child: Text(
                   'You need at least two accounts to make a transfer.\n\n'
                   'Please add another account first.',
