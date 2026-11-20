@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../../shared/database_instance.dart';
 import '../../core/database/app_database.dart';
 import '../../core/utils/money_formatter.dart';
+import 'new_transfer_page.dart';
+import 'transfer_history_page.dart';
 
 class AccountsPage extends StatelessWidget {
   const AccountsPage({super.key});
@@ -114,8 +116,8 @@ class AccountsPage extends StatelessWidget {
         title: const Text('Delete account?'),
         content: Text(
           'Are you sure you want to delete "${account.name}"?\n\n'
-          'An account used by transactions or due payments '
-          'cannot be deleted.',
+          'An account used by transactions, due payments, '
+          'or transfers cannot be deleted.',
         ),
         actions: [
           TextButton(
@@ -155,7 +157,7 @@ class AccountsPage extends StatelessWidget {
           const SnackBar(
             content: Text(
               'Cannot delete this account because it is used '
-              'by transactions or due payments.',
+              'by transactions, due payments, or transfers.',
             ),
           ),
         );
@@ -189,6 +191,7 @@ class AccountsPage extends StatelessWidget {
     Account account,
     List<Transaction> transactions,
     List<DuePayment> duePayments,
+    List<Transfer> transfers,
   ) {
     final transactionBalance = transactions
         .where((t) => t.accountId == account.id)
@@ -214,7 +217,24 @@ class AccountsPage extends StatelessWidget {
       (total, payment) => total + payment.amountPaisa,
     );
 
-    return transactionBalance - totalDuePayments;
+    final outgoingTransfers = transfers
+        .where((transfer) => transfer.fromAccountId == account.id)
+        .fold<int>(
+      0,
+      (total, transfer) => total + transfer.amountPaisa,
+    );
+
+    final incomingTransfers = transfers
+        .where((transfer) => transfer.toAccountId == account.id)
+        .fold<int>(
+      0,
+      (total, transfer) => total + transfer.amountPaisa,
+    );
+
+    return transactionBalance -
+        totalDuePayments -
+        outgoingTransfers +
+        incomingTransfers;
   }
 
   // ACCOUNT ICON
@@ -259,18 +279,6 @@ class AccountsPage extends StatelessWidget {
     }
 
     return primary;
-  }
-
-  // COMING SOON
-
-  void showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$feature will be available in a future update.',
-        ),
-      ),
-    );
   }
 
   @override
@@ -339,194 +347,229 @@ class AccountsPage extends StatelessWidget {
 
                   final duePayments = paymentSnapshot.data!;
 
-                  // TOTAL BALANCE
+                  // TRANSFER STREAM
 
-                  final totalBalance = accounts.fold<int>(
-                    0,
-                    (total, account) =>
-                        total +
-                        accountBalance(
-                          account,
-                          transactions,
-                          duePayments,
-                        ),
-                  );
-
-                  return ListView(
-                    padding: const EdgeInsets.only(
-                      top: 38,
-                      bottom: 100,
-                    ),
-                    children: [
-                      // TOTAL LABEL
-
-                      const Center(
-                        child: Text(
-                          'Total:',
-                          style: TextStyle(
-                            fontSize: 22,
-                            color: Colors.black54,
+                  return StreamBuilder<List<Transfer>>(
+                    stream: database.watchTransfers(),
+                    builder: (context, transferSnapshot) {
+                      if (transferSnapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error: ${transferSnapshot.error}',
                           ),
-                        ),
-                      ),
+                        );
+                      }
 
-                      const SizedBox(height: 4),
+                      if (!transferSnapshot.hasData) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+
+                      final transfers = transferSnapshot.data!;
 
                       // TOTAL BALANCE
 
-                      Center(
-                        child: Text(
-                          formatMoney(totalBalance),
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w600,
-                            color: darkText,
-                          ),
+                      final totalBalance = accounts.fold<int>(
+                        0,
+                        (total, account) =>
+                            total +
+                            accountBalance(
+                              account,
+                              transactions,
+                              duePayments,
+                              transfers,
+                            ),
+                      );
+
+                      return ListView(
+                        padding: const EdgeInsets.only(
+                          top: 38,
+                          bottom: 100,
                         ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // TRANSFER SHORTCUTS
-
-                      Row(
                         children: [
-                          Expanded(
-                            child: _Shortcut(
-                              icon: Icons.history,
-                              title: 'Transfer history',
-                              onTap: () => showComingSoon(
-                                context,
-                                'Transfer history',
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: _Shortcut(
-                              icon: Icons.swap_horiz,
-                              title: 'New transfer',
-                              onTap: () => showComingSoon(
-                                context,
-                                'Account transfers',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                          // TOTAL LABEL
 
-                      const SizedBox(height: 24),
-
-                      // ACCOUNTS
-
-                      if (accounts.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(30),
-                          child: Center(
+                          const Center(
                             child: Text(
-                              'No accounts yet. Add your first account.',
+                              'Total:',
+                              style: TextStyle(
+                                fontSize: 22,
+                                color: Colors.black54,
+                              ),
                             ),
                           ),
-                        ),
 
-                      ...accounts.map((account) {
-                        final balance = accountBalance(
-                          account,
-                          transactions,
-                          duePayments,
-                        );
+                          const SizedBox(height: 4),
 
-                        final color = accountColor(account.name);
+                          // TOTAL BALANCE
 
-                        return Dismissible(
-                          key: ValueKey(account.id),
-                          direction: DismissDirection.endToStart,
-
-                          background: Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 6,
+                          Center(
+                            child: Text(
+                              formatMoney(totalBalance),
+                              style: const TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w600,
+                                color: darkText,
+                              ),
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(17),
-                            ),
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(
-                              right: 24,
-                            ),
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.white,
-                                  size: 30,
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // TRANSFER SHORTCUTS
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _Shortcut(
+                                  icon: Icons.history,
+                                  title: 'Transfer history',
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const TransferHistoryPage(),
+                                      ),
+                                    );
+                                  },
                                 ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Delete',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
+                              ),
+                              Expanded(
+                                child: _Shortcut(
+                                  icon: Icons.swap_horiz,
+                                  title: 'New transfer',
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const NewTransferPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // ACCOUNTS
+
+                          if (accounts.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(30),
+                              child: Center(
+                                child: Text(
+                                  'No accounts yet. Add your first account.',
+                                ),
+                              ),
+                            ),
+
+                          ...accounts.map((account) {
+                            final balance = accountBalance(
+                              account,
+                              transactions,
+                              duePayments,
+                              transfers,
+                            );
+
+                            final color = accountColor(account.name);
+
+                            return Dismissible(
+                              key: ValueKey(account.id),
+                              direction: DismissDirection.endToStart,
+
+                              background: Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(17),
+                                ),
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(
+                                  right: 24,
+                                ),
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.delete_outline,
+                                      color: Colors.white,
+                                      size: 30,
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Delete',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              confirmDismiss: (_) async {
+                                return confirmDelete(context, account);
+                              },
+
+                              onDismissed: (_) {},
+
+                              child: Card(
+                                color: Colors.white,
+                                elevation: 2,
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(17),
+                                ),
+                                child: ListTile(
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 15,
+                                    vertical: 8,
+                                  ),
+                                  leading: CircleAvatar(
+                                    radius: 23,
+                                    backgroundColor: color,
+                                    child: Icon(
+                                      accountIcon(account.name),
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    account.name,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  trailing: Text(
+                                    formatMoney(balance),
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      color: darkText,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-
-                          confirmDismiss: (_) async {
-                            return confirmDelete(context, account);
-                          },
-
-                          onDismissed: (_) {},
-
-                          child: Card(
-                            color: Colors.white,
-                            elevation: 2,
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 6,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(17),
-                            ),
-                            child: ListTile(
-                              contentPadding:
-                                  const EdgeInsets.symmetric(
-                                horizontal: 15,
-                                vertical: 8,
                               ),
-                              leading: CircleAvatar(
-                                radius: 23,
-                                backgroundColor: color,
-                                child: Icon(
-                                  accountIcon(account.name),
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                              title: Text(
-                                account.name,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              trailing: Text(
-                                formatMoney(balance),
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  color: darkText,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
+                            );
+                          }),
+                        ],
+                      );
+                    },
                   );
                 },
               );
