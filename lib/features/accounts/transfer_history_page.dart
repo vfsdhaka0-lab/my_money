@@ -26,8 +26,16 @@ class TransferHistoryPage extends StatelessWidget {
       backgroundColor: background,
       appBar: AppBar(
         title: const Text('Transfer History'),
-        backgroundColor: primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+        toolbarHeight: 56,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(30),
+          ),
+        ),
       ),
       body: StreamBuilder<List<Account>>(
         stream: database.watchAccounts(),
