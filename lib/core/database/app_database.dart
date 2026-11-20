@@ -70,6 +70,7 @@ class AppDatabase extends _$AppDatabase {
           if (from < 5) {
             await m.createTable(transfers);
           }
+
           if (from < 6) {
             await m.createTable(borrowLends);
             await m.createTable(borrowLendPayments);
@@ -144,6 +145,43 @@ class AppDatabase extends _$AppDatabase {
       }
     }
 
+    // Include original borrowing and lending amounts.
+    final accountBorrowLends = await (select(borrowLends)
+          ..where((item) => item.accountId.equals(accountId)))
+        .get();
+
+    for (final item in accountBorrowLends) {
+      if (item.type == 'borrow') {
+        currentBalance += item.amountPaisa;
+      } else if (item.type == 'lend') {
+        currentBalance -= item.amountPaisa;
+      }
+    }
+
+    // Include repayments made or received through this account.
+    final accountBorrowLendPayments =
+        await (select(borrowLendPayments)
+              ..where((payment) => payment.accountId.equals(accountId)))
+            .get();
+
+    for (final payment in accountBorrowLendPayments) {
+      final record = await (select(borrowLends)
+            ..where(
+              (item) => item.id.equals(payment.borrowLendId),
+            ))
+          .getSingleOrNull();
+
+      if (record == null) continue;
+
+      if (record.type == 'borrow') {
+        // Repaying borrowed money reduces this account.
+        currentBalance -= payment.amountPaisa;
+      } else if (record.type == 'lend') {
+        // Receiving a lent-money repayment increases this account.
+        currentBalance += payment.amountPaisa;
+      }
+    }
+
     if (currentBalance < outgoingAmountPaisa) {
       throw StateError(
         'Insufficient balance. '
@@ -198,6 +236,27 @@ class AppDatabase extends _$AppDatabase {
           .get();
 
       if (linkedTransfers.isNotEmpty) {
+        return false;
+      }
+
+      // Accounts used in borrowing or lending cannot be deleted.
+      final linkedBorrowLends = await (select(borrowLends)
+            ..where((item) => item.accountId.equals(accountId)))
+          .get();
+
+      if (linkedBorrowLends.isNotEmpty) {
+        return false;
+      }
+
+      // Accounts used for repayments cannot be deleted.
+      final linkedBorrowLendPayments =
+          await (select(borrowLendPayments)
+                ..where(
+                  (payment) => payment.accountId.equals(accountId),
+                ))
+              .get();
+
+      if (linkedBorrowLendPayments.isNotEmpty) {
         return false;
       }
 
@@ -442,6 +501,165 @@ class AppDatabase extends _$AppDatabase {
         TransfersCompanion.insert(
           fromAccountId: fromAccountId,
           toAccountId: toAccountId,
+          amountPaisa: amountPaisa,
+          date: date,
+          note: Value(note),
+        ),
+      );
+    });
+  }
+
+  // BORROW & LEND
+
+  // Watch all borrow and lend records, newest first.
+  Stream<List<BorrowLend>> watchBorrowLends() {
+    return (select(borrowLends)
+          ..orderBy([
+            (item) => OrderingTerm.desc(item.date),
+            (item) => OrderingTerm.desc(item.createdAt),
+          ]))
+        .watch();
+  }
+
+  // Watch repayments for one borrow/lend record.
+  Stream<List<BorrowLendPayment>> watchBorrowLendPayments(
+    int borrowLendId,
+  ) {
+    return (select(borrowLendPayments)
+          ..where(
+            (payment) =>
+                payment.borrowLendId.equals(borrowLendId),
+          )
+          ..orderBy([
+            (payment) => OrderingTerm.desc(payment.date),
+          ]))
+        .watch();
+  }
+
+  // Add a new borrowing or lending record.
+  Future<int> addBorrowLend({
+    required String type,
+    required String personName,
+    required int accountId,
+    required int amountPaisa,
+    required DateTime date,
+    String? note,
+  }) async {
+    if (type != 'borrow' && type != 'lend') {
+      throw ArgumentError('Invalid borrow/lend type.');
+    }
+
+    if (personName.trim().isEmpty || amountPaisa <= 0) {
+      throw ArgumentError('Invalid borrow/lend information.');
+    }
+
+    return transaction(() async {
+      final account = await (select(accounts)
+            ..where((a) => a.id.equals(accountId)))
+          .getSingleOrNull();
+
+      if (account == null) {
+        throw StateError('Account not found.');
+      }
+
+      // Lending means money leaves your account.
+      if (type == 'lend') {
+        await _checkAccountBalance(
+          accountId: accountId,
+          outgoingAmountPaisa: amountPaisa,
+        );
+      }
+
+      return into(borrowLends).insert(
+        BorrowLendsCompanion.insert(
+          type: type,
+          personName: personName.trim(),
+          accountId: accountId,
+          amountPaisa: amountPaisa,
+          date: date,
+          note: Value(note),
+        ),
+      );
+    });
+  }
+
+  // Calculate the remaining amount.
+  Future<int> getOutstandingBorrowLend(
+    int borrowLendId,
+  ) async {
+    final record = await (select(borrowLends)
+          ..where((item) => item.id.equals(borrowLendId)))
+        .getSingleOrNull();
+
+    if (record == null) {
+      throw StateError('Borrow/lend record not found.');
+    }
+
+    final payments = await (select(borrowLendPayments)
+          ..where(
+            (payment) =>
+                payment.borrowLendId.equals(borrowLendId),
+          ))
+        .get();
+
+    final totalPaid = payments.fold<int>(
+      0,
+      (total, payment) => total + payment.amountPaisa,
+    );
+
+    return record.amountPaisa - totalPaid;
+  }
+
+  // Add a partial or full repayment.
+  Future<void> addBorrowLendPayment({
+    required int borrowLendId,
+    required int accountId,
+    required int amountPaisa,
+    required DateTime date,
+    String? note,
+  }) async {
+    if (amountPaisa <= 0) {
+      throw ArgumentError('Payment must be greater than zero.');
+    }
+
+    await transaction(() async {
+      final record = await (select(borrowLends)
+            ..where((item) => item.id.equals(borrowLendId)))
+          .getSingleOrNull();
+
+      if (record == null) {
+        throw StateError('Borrow/lend record not found.');
+      }
+
+      final outstanding =
+          await getOutstandingBorrowLend(borrowLendId);
+
+      if (outstanding <= 0 || amountPaisa > outstanding) {
+        throw StateError(
+          'Payment exceeds the outstanding amount.',
+        );
+      }
+
+      final account = await (select(accounts)
+            ..where((a) => a.id.equals(accountId)))
+          .getSingleOrNull();
+
+      if (account == null) {
+        throw StateError('Account not found.');
+      }
+
+      // Repaying borrowed money means money leaves your account.
+      if (record.type == 'borrow') {
+        await _checkAccountBalance(
+          accountId: accountId,
+          outgoingAmountPaisa: amountPaisa,
+        );
+      }
+
+      await into(borrowLendPayments).insert(
+        BorrowLendPaymentsCompanion.insert(
+          borrowLendId: borrowLendId,
+          accountId: accountId,
           amountPaisa: amountPaisa,
           date: date,
           note: Value(note),
