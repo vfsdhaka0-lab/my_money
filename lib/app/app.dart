@@ -1,4 +1,3 @@
-
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
@@ -171,7 +170,9 @@ class _HomePageState extends State<HomePage> {
             onMenuPressed: _openDrawer,
           ),
           const DuesPage(),
-          const BorrowLendPage(),
+          BorrowLendPage(
+            onMenuPressed: _openDrawer,
+          ),
           const BackupPage(),
         ],
       ),
