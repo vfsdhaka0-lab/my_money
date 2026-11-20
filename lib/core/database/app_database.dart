@@ -62,6 +62,7 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await m.createTable(stores);
           }
+
           if (from < 5) {
             await m.createTable(transfers);
           }
@@ -72,10 +73,7 @@ class AppDatabase extends _$AppDatabase {
   //
   // Only accounts whose name contains "bank" can go negative.
   // All other accounts must have enough balance before an
-  // outgoing payment can be saved.
-  //
-  // Existing negative balances are not changed. They simply
-  // cannot be used for additional outgoing payments.
+  // outgoing payment or transfer can be saved.
   Future<void> _checkAccountBalance({
     required int accountId,
     required int outgoingAmountPaisa,
@@ -117,6 +115,25 @@ class AppDatabase extends _$AppDatabase {
 
     for (final payment in accountPayments) {
       currentBalance -= payment.amountPaisa;
+    }
+
+    // Include previous transfers in the balance.
+    final accountTransfers = await (select(transfers)
+          ..where(
+            (transfer) =>
+                transfer.fromAccountId.equals(accountId) |
+                transfer.toAccountId.equals(accountId),
+          ))
+        .get();
+
+    for (final transfer in accountTransfers) {
+      if (transfer.fromAccountId == accountId) {
+        currentBalance -= transfer.amountPaisa;
+      }
+
+      if (transfer.toAccountId == accountId) {
+        currentBalance += transfer.amountPaisa;
+      }
     }
 
     if (currentBalance < outgoingAmountPaisa) {
@@ -163,6 +180,19 @@ class AppDatabase extends _$AppDatabase {
         return false;
       }
 
+      // Accounts used in transfers cannot be deleted.
+      final linkedTransfers = await (select(transfers)
+            ..where(
+              (transfer) =>
+                  transfer.fromAccountId.equals(accountId) |
+                  transfer.toAccountId.equals(accountId),
+            ))
+          .get();
+
+      if (linkedTransfers.isNotEmpty) {
+        return false;
+      }
+
       await (delete(accounts)
             ..where((a) => a.id.equals(accountId)))
           .go();
@@ -184,7 +214,6 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  // ADD CATEGORY
   Future<int> addCategory({
     required String name,
     required String type,
@@ -350,6 +379,69 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  // TRANSFERS
+
+  // Watch all transfers, newest first.
+  Stream<List<Transfer>> watchTransfers() {
+    return (select(transfers)
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.date),
+            (t) => OrderingTerm.desc(t.createdAt),
+          ]))
+        .watch();
+  }
+
+  // ADD TRANSFER BETWEEN TWO ACCOUNTS.
+  //
+  // A transfer is stored separately from income and expenses.
+  // It reduces the source account and increases the destination
+  // account without changing the total balance.
+  Future<int> addTransfer({
+    required int fromAccountId,
+    required int toAccountId,
+    required int amountPaisa,
+    required DateTime date,
+    String? note,
+  }) async {
+    if (fromAccountId == toAccountId) {
+      throw ArgumentError(
+        'Please select two different accounts.',
+      );
+    }
+
+    if (amountPaisa <= 0) {
+      throw ArgumentError(
+        'Transfer amount must be greater than zero.',
+      );
+    }
+
+    return transaction(() async {
+      await _checkAccountBalance(
+        accountId: fromAccountId,
+        outgoingAmountPaisa: amountPaisa,
+      );
+
+      final destinationAccount =
+          await (select(accounts)
+                ..where((a) => a.id.equals(toAccountId)))
+              .getSingleOrNull();
+
+      if (destinationAccount == null) {
+        throw StateError('Destination account not found.');
+      }
+
+      return into(transfers).insert(
+        TransfersCompanion.insert(
+          fromAccountId: fromAccountId,
+          toAccountId: toAccountId,
+          amountPaisa: amountPaisa,
+          date: date,
+          note: Value(note),
+        ),
+      );
+    });
+  }
+
   // DUES
   Stream<List<Due>> watchDues() {
     return (select(dues)
@@ -475,15 +567,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // PAY AN ENTIRE STORE
-  //
-  // If allocations is null:
-  // Automatically pays the oldest unpaid purchases first.
-  //
-  // If allocations is supplied:
-  // Uses the manually selected amount for each due ID.
-  //
-  // Returns the actual allocation:
-  // {dueId: amountPaidPaisa}
   Future<Map<int, int>> addStoreDuePayment({
     required String storeName,
     required int accountId,
