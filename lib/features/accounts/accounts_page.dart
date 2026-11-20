@@ -117,7 +117,7 @@ class AccountsPage extends StatelessWidget {
         content: Text(
           'Are you sure you want to delete "${account.name}"?\n\n'
           'An account used by transactions, due payments, '
-          'or transfers cannot be deleted.',
+          'transfers, or Borrow & Lend records cannot be deleted.',
         ),
         actions: [
           TextButton(
@@ -157,7 +157,8 @@ class AccountsPage extends StatelessWidget {
           const SnackBar(
             content: Text(
               'Cannot delete this account because it is used '
-              'by transactions, due payments, or transfers.',
+              'by transactions, due payments, transfers, '
+              'or Borrow & Lend records.',
             ),
           ),
         );
@@ -192,18 +193,20 @@ class AccountsPage extends StatelessWidget {
     List<Transaction> transactions,
     List<DuePayment> duePayments,
     List<Transfer> transfers,
+    List<BorrowLend> borrowLends,
+    List<BorrowLendPayment> borrowLendPayments,
   ) {
     final transactionBalance = transactions
         .where((t) => t.accountId == account.id)
         .fold<int>(
       account.openingBalancePaisa,
-      (total, transaction) {
-        if (transaction.type == 'income') {
-          return total + transaction.amountPaisa;
+      (total, item) {
+        if (item.type == 'income') {
+          return total + item.paidAmountPaisa;
         }
 
-        if (transaction.type == 'expense') {
-          return total - transaction.paidAmountPaisa;
+        if (item.type == 'expense') {
+          return total - item.paidAmountPaisa;
         }
 
         return total;
@@ -231,10 +234,70 @@ class AccountsPage extends StatelessWidget {
       (total, transfer) => total + transfer.amountPaisa,
     );
 
+    // Original borrowing and lending amounts.
+
+    final borrowedAmount = borrowLends
+        .where(
+          (item) =>
+              item.accountId == account.id &&
+              item.type == 'borrow',
+        )
+        .fold<int>(
+      0,
+      (total, item) => total + item.amountPaisa,
+    );
+
+    final lentAmount = borrowLends
+        .where(
+          (item) =>
+              item.accountId == account.id &&
+              item.type == 'lend',
+        )
+        .fold<int>(
+      0,
+      (total, item) => total + item.amountPaisa,
+    );
+
+    // Repayments made for borrowed money.
+
+    final borrowedRepayments = borrowLendPayments
+        .where((payment) => payment.accountId == account.id)
+        .where((payment) {
+          return borrowLends.any(
+            (item) =>
+                item.id == payment.borrowLendId &&
+                item.type == 'borrow',
+          );
+        })
+        .fold<int>(
+      0,
+      (total, payment) => total + payment.amountPaisa,
+    );
+
+    // Repayments received for lent money.
+
+    final lentRepayments = borrowLendPayments
+        .where((payment) => payment.accountId == account.id)
+        .where((payment) {
+          return borrowLends.any(
+            (item) =>
+                item.id == payment.borrowLendId &&
+                item.type == 'lend',
+          );
+        })
+        .fold<int>(
+      0,
+      (total, payment) => total + payment.amountPaisa,
+    );
+
     return transactionBalance -
         totalDuePayments -
         outgoingTransfers +
-        incomingTransfers;
+        incomingTransfers +
+        borrowedAmount -
+        lentAmount -
+        borrowedRepayments +
+        lentRepayments;
   }
 
   // ACCOUNT ICON
@@ -368,206 +431,274 @@ class AccountsPage extends StatelessWidget {
 
                       final transfers = transferSnapshot.data!;
 
-                      // TOTAL BALANCE
+                      // BORROW & LEND STREAM
 
-                      final totalBalance = accounts.fold<int>(
-                        0,
-                        (total, account) =>
-                            total +
-                            accountBalance(
-                              account,
-                              transactions,
-                              duePayments,
-                              transfers,
-                            ),
-                      );
-
-                      return ListView(
-                        padding: const EdgeInsets.only(
-                          top: 38,
-                          bottom: 100,
-                        ),
-                        children: [
-                          // TOTAL LABEL
-
-                          const Center(
-                            child: Text(
-                              'Total:',
-                              style: TextStyle(
-                                fontSize: 22,
-                                color: Colors.black54,
+                      return StreamBuilder<List<BorrowLend>>(
+                        stream: database.watchBorrowLends(),
+                        builder: (context, borrowLendSnapshot) {
+                          if (borrowLendSnapshot.hasError) {
+                            return Center(
+                              child: Text(
+                                'Error: ${borrowLendSnapshot.error}',
                               ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 4),
-
-                          // TOTAL BALANCE
-
-                          Center(
-                            child: Text(
-                              formatMoney(totalBalance),
-                              style: const TextStyle(
-                                fontSize: 36,
-                                fontWeight: FontWeight.w600,
-                                color: darkText,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          // TRANSFER SHORTCUTS
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _Shortcut(
-                                  icon: Icons.history,
-                                  title: 'Transfer history',
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const TransferHistoryPage(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: _Shortcut(
-                                  icon: Icons.swap_horiz,
-                                  title: 'New transfer',
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const NewTransferPage(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // ACCOUNTS
-
-                          if (accounts.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.all(30),
-                              child: Center(
-                                child: Text(
-                                  'No accounts yet. Add your first account.',
-                                ),
-                              ),
-                            ),
-
-                          ...accounts.map((account) {
-                            final balance = accountBalance(
-                              account,
-                              transactions,
-                              duePayments,
-                              transfers,
                             );
+                          }
 
-                            final color = accountColor(account.name);
+                          if (!borrowLendSnapshot.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                            return Dismissible(
-                              key: ValueKey(account.id),
-                              direction: DismissDirection.endToStart,
+                          final borrowLends =
+                              borrowLendSnapshot.data!;
 
-                              background: Container(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(17),
-                                ),
-                                alignment: Alignment.centerRight,
+                          // BORROW & LEND REPAYMENT STREAM
+
+                          return StreamBuilder<List<BorrowLendPayment>>(
+                            stream: database
+                                .select(database.borrowLendPayments)
+                                .watch(),
+                            builder: (context, borrowPaymentSnapshot) {
+                              if (borrowPaymentSnapshot.hasError) {
+                                return Center(
+                                  child: Text(
+                                    'Error: ${borrowPaymentSnapshot.error}',
+                                  ),
+                                );
+                              }
+
+                              if (!borrowPaymentSnapshot.hasData) {
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
+
+                              final borrowLendPayments =
+                                  borrowPaymentSnapshot.data!;
+
+                              // TOTAL BALANCE
+
+                              final totalBalance = accounts.fold<int>(
+                                0,
+                                (total, account) =>
+                                    total +
+                                    accountBalance(
+                                      account,
+                                      transactions,
+                                      duePayments,
+                                      transfers,
+                                      borrowLends,
+                                      borrowLendPayments,
+                                    ),
+                              );
+
+                              return ListView(
                                 padding: const EdgeInsets.only(
-                                  right: 24,
+                                  top: 38,
+                                  bottom: 100,
                                 ),
-                                child: const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.white,
-                                      size: 30,
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Delete',
+                                children: [
+                                  // TOTAL LABEL
+
+                                  const Center(
+                                    child: Text(
+                                      'Total:',
                                       style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
+                                        fontSize: 22,
+                                        color: Colors.black54,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
-
-                              confirmDismiss: (_) async {
-                                return confirmDelete(context, account);
-                              },
-
-                              onDismissed: (_) {},
-
-                              child: Card(
-                                color: Colors.white,
-                                elevation: 2,
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 6,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(17),
-                                ),
-                                child: ListTile(
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(
-                                    horizontal: 15,
-                                    vertical: 8,
                                   ),
-                                  leading: CircleAvatar(
-                                    radius: 23,
-                                    backgroundColor: color,
-                                    child: Icon(
-                                      accountIcon(account.name),
-                                      color: Colors.white,
-                                      size: 24,
+
+                                  const SizedBox(height: 4),
+
+                                  // TOTAL BALANCE
+
+                                  Center(
+                                    child: Text(
+                                      formatMoney(totalBalance),
+                                      style: const TextStyle(
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w600,
+                                        color: darkText,
+                                      ),
                                     ),
                                   ),
-                                  title: Text(
-                                    account.name,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+
+                                  const SizedBox(height: 32),
+
+                                  // TRANSFER SHORTCUTS
+
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _Shortcut(
+                                          icon: Icons.history,
+                                          title: 'Transfer history',
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const TransferHistoryPage(),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: _Shortcut(
+                                          icon: Icons.swap_horiz,
+                                          title: 'New transfer',
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const NewTransferPage(),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  trailing: Text(
-                                    formatMoney(balance),
-                                    style: const TextStyle(
-                                      fontSize: 17,
-                                      color: darkText,
-                                      fontWeight: FontWeight.w500,
+
+                                  const SizedBox(height: 24),
+
+                                  // ACCOUNTS
+
+                                  if (accounts.isEmpty)
+                                    const Padding(
+                                      padding: EdgeInsets.all(30),
+                                      child: Center(
+                                        child: Text(
+                                          'No accounts yet. Add your first account.',
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
+
+                                  ...accounts.map((account) {
+                                    final balance = accountBalance(
+                                      account,
+                                      transactions,
+                                      duePayments,
+                                      transfers,
+                                      borrowLends,
+                                      borrowLendPayments,
+                                    );
+
+                                    final color =
+                                        accountColor(account.name);
+
+                                    return Dismissible(
+                                      key: ValueKey(account.id),
+                                      direction:
+                                          DismissDirection.endToStart,
+
+                                      background: Container(
+                                        margin:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius:
+                                              BorderRadius.circular(17),
+                                        ),
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.only(
+                                          right: 24,
+                                        ),
+                                        child: const Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.delete_outline,
+                                              color: Colors.white,
+                                              size: 30,
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              'Delete',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight:
+                                                    FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      confirmDismiss: (_) async {
+                                        return confirmDelete(
+                                          context,
+                                          account,
+                                        );
+                                      },
+
+                                      onDismissed: (_) {},
+
+                                      child: Card(
+                                        color: Colors.white,
+                                        elevation: 2,
+                                        margin:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 6,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(17),
+                                        ),
+                                        child: ListTile(
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                            horizontal: 15,
+                                            vertical: 8,
+                                          ),
+                                          leading: CircleAvatar(
+                                            radius: 23,
+                                            backgroundColor: color,
+                                            child: Icon(
+                                              accountIcon(account.name),
+                                              color: Colors.white,
+                                              size: 24,
+                                            ),
+                                          ),
+                                          title: Text(
+                                            account.name,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              color: Colors.black,
+                                              fontWeight:
+                                                  FontWeight.w500,
+                                            ),
+                                          ),
+                                          trailing: Text(
+                                            formatMoney(balance),
+                                            style: const TextStyle(
+                                              fontSize: 17,
+                                              color: darkText,
+                                              fontWeight:
+                                                  FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              );
+                            },
+                          );
+                        },
                       );
                     },
                   );
