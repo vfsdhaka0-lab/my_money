@@ -12,6 +12,7 @@ import 'tables/transactions.dart';
 import 'tables/dues.dart';
 import 'tables/due_payments.dart';
 import 'tables/stores.dart';
+import 'tables/transfers.dart';
 
 part 'app_database.g.dart';
 
@@ -23,6 +24,7 @@ part 'app_database.g.dart';
     Dues,
     DuePayments,
     Stores,
+    Transfers,
   ],
 )
 class AppDatabase extends _$AppDatabase {
