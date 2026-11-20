@@ -8,7 +8,12 @@ import 'borrow_lend_details_page.dart';
 import 'new_borrow_lend_page.dart';
 
 class BorrowLendPage extends StatelessWidget {
-  const BorrowLendPage({super.key});
+  final VoidCallback onMenuPressed;
+
+  const BorrowLendPage({
+    super.key,
+    required this.onMenuPressed,
+  });
 
   String _formatMoney(int paisa) {
     return '৳${(paisa / 100).toStringAsFixed(2)}';
@@ -19,6 +24,11 @@ class BorrowLendPage extends StatelessWidget {
     return '${localDate.day.toString().padLeft(2, '0')}/'
         '${localDate.month.toString().padLeft(2, '0')}/'
         '${localDate.year}';
+  }
+
+  int _getOutstanding(int originalAmount, int paidAmount) {
+    final outstanding = originalAmount - paidAmount;
+    return outstanding < 0 ? 0 : outstanding;
   }
 
   Future<void> _openNewPage(
@@ -37,6 +47,12 @@ class BorrowLendPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          onPressed: onMenuPressed,
+          icon: const Icon(Icons.menu),
+          tooltip: 'Open menu',
+        ),
         title: const Text('Borrow & Lend'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
@@ -51,57 +67,68 @@ class BorrowLendPage extends StatelessWidget {
       ),
       body: StreamBuilder(
         stream: database.watchBorrowLends(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
+        builder: (context, recordSnapshot) {
+          if (recordSnapshot.hasError) {
             return const Center(
-              child: Text('Something went wrong while loading records.'),
+              child: Text('Unable to load Borrow & Lend records.'),
             );
           }
 
-          if (!snapshot.hasData) {
+          if (!recordSnapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(),
             );
           }
 
-          final records = snapshot.data!;
+          final records = recordSnapshot.data!;
 
-          return FutureBuilder<List<int>>(
-            future: Future.wait(
-              records.map(
-                (record) =>
-                    database.getOutstandingBorrowLend(record.id),
-              ),
-            ),
-            builder: (context, outstandingSnapshot) {
-              if (outstandingSnapshot.hasError) {
+          return StreamBuilder(
+            stream: database
+                .select(database.borrowLendPayments)
+                .watch(),
+            builder: (context, paymentSnapshot) {
+              if (paymentSnapshot.hasError) {
                 return const Center(
-                  child: Text(
-                    'Unable to calculate outstanding balances.',
-                  ),
+                  child: Text('Unable to load repayment records.'),
                 );
               }
 
-              if (!outstandingSnapshot.hasData) {
+              if (!paymentSnapshot.hasData) {
                 return const Center(
                   child: CircularProgressIndicator(),
                 );
               }
 
-              final outstandingAmounts = outstandingSnapshot.data!;
+              final payments = paymentSnapshot.data!;
 
               int totalBorrowed = 0;
               int totalLent = 0;
 
-              for (var i = 0; i < records.length; i++) {
-                final type = records[i].type.toLowerCase();
+              final outstandingAmounts = records.map((record) {
+                final paidAmount = payments
+                    .where(
+                      (payment) =>
+                          payment.borrowLendId == record.id,
+                    )
+                    .fold<int>(
+                      0,
+                      (total, payment) =>
+                          total + payment.amountPaisa,
+                    );
 
-                if (type == 'borrow') {
-                  totalBorrowed += outstandingAmounts[i];
-                } else if (type == 'lend') {
-                  totalLent += outstandingAmounts[i];
+                final outstanding = _getOutstanding(
+                  record.amountPaisa,
+                  paidAmount,
+                );
+
+                if (record.type.toLowerCase() == 'borrow') {
+                  totalBorrowed += outstanding;
+                } else if (record.type.toLowerCase() == 'lend') {
+                  totalLent += outstanding;
                 }
-              }
+
+                return outstanding;
+              }).toList();
 
               return ListView(
                 padding: const EdgeInsets.all(16),
@@ -128,7 +155,6 @@ class BorrowLendPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 18),
-
                   Row(
                     children: [
                       Expanded(
@@ -175,7 +201,6 @@ class BorrowLendPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-
                   const Text(
                     'All Records',
                     style: TextStyle(
@@ -184,7 +209,6 @@ class BorrowLendPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-
                   if (records.isEmpty)
                     const Card(
                       child: Padding(
