@@ -756,7 +756,9 @@ class TransactionsPage extends StatelessWidget {
                             Text(
                               isFullDue
                                   ? 'Fully due — no payment made yet'
-                                  : 'Paid by: $accountName',
+                                  : isIncome
+                                      ? 'Received in: $accountName'
+                                      : 'Paid by: $accountName',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isFullDue
