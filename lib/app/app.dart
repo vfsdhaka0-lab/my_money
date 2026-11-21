@@ -1,4 +1,5 @@
-// ignore_for_file: deprecated_member_use
+
+ // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 
@@ -8,6 +9,7 @@ import '../features/categories/categories_page.dart';
 import '../features/dues/dues_page.dart';
 import '../features/borrow_lend/borrow_lend_page.dart';
 import '../features/backup/backup_page.dart';
+import '../features/reports/reports_page.dart';
 import 'theme.dart';
 
 class MyMoneyApp extends StatelessWidget {
@@ -60,6 +62,7 @@ class _HomePageState extends State<HomePage> {
       'Due Management',
       'Borrow & Lend',
       'Backup & Restore',
+      'Financial Reports',
     ];
 
     return Scaffold(
@@ -67,7 +70,8 @@ class _HomePageState extends State<HomePage> {
 
       appBar: selectedIndex == 2 ||
               selectedIndex == 4 ||
-              selectedIndex == 5
+              selectedIndex == 5 ||
+              selectedIndex == 6
           ? null
           : AppBar(
               backgroundColor: primary,
@@ -120,7 +124,9 @@ class _HomePageState extends State<HomePage> {
             ),
 
             ListTile(
-              leading: const Icon(Icons.receipt_long_outlined),
+              leading: const Icon(
+                Icons.receipt_long_outlined,
+              ),
               title: const Text('Transactions'),
               selected: selectedIndex == 1,
               onTap: () => selectPage(1),
@@ -129,21 +135,27 @@ class _HomePageState extends State<HomePage> {
             const Divider(),
 
             ListTile(
-              leading: const Icon(Icons.category_outlined),
+              leading: const Icon(
+                Icons.category_outlined,
+              ),
               title: const Text('Categories & Stores'),
               selected: selectedIndex == 2,
               onTap: () => selectPage(2),
             ),
 
             ListTile(
-              leading: const Icon(Icons.receipt_outlined),
+              leading: const Icon(
+                Icons.receipt_outlined,
+              ),
               title: const Text('Due Management'),
               selected: selectedIndex == 3,
               onTap: () => selectPage(3),
             ),
 
             ListTile(
-              leading: const Icon(Icons.swap_horiz_rounded),
+              leading: const Icon(
+                Icons.swap_horiz_rounded,
+              ),
               title: const Text('Borrow & Lend'),
               selected: selectedIndex == 4,
               onTap: () => selectPage(4),
@@ -152,10 +164,21 @@ class _HomePageState extends State<HomePage> {
             const Divider(),
 
             ListTile(
-              leading: const Icon(Icons.cloud_sync_outlined),
+              leading: const Icon(
+                Icons.cloud_sync_outlined,
+              ),
               title: const Text('Backup & Restore'),
               selected: selectedIndex == 5,
               onTap: () => selectPage(5),
+            ),
+
+            ListTile(
+              leading: const Icon(
+                Icons.analytics_outlined,
+              ),
+              title: const Text('Financial Reports'),
+              selected: selectedIndex == 6,
+              onTap: () => selectPage(6),
             ),
           ],
         ),
@@ -166,19 +189,18 @@ class _HomePageState extends State<HomePage> {
         children: [
           const AccountsPage(),
           const TransactionsPage(),
-          CategoriesPage(
-            onMenuPressed: _openDrawer,
-          ),
+          CategoriesPage(onMenuPressed: _openDrawer),
           const DuesPage(),
-          BorrowLendPage(
-            onMenuPressed: _openDrawer,
-          ),
+          BorrowLendPage(onMenuPressed: _openDrawer),
           const BackupPage(),
+          const ReportsPage(),
         ],
       ),
 
       bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex < 2 ? selectedIndex : 0,
+        selectedIndex: selectedIndex < 2
+            ? selectedIndex
+            : 0,
         onDestinationSelected: (index) {
           setState(() {
             selectedIndex = index;
@@ -186,13 +208,21 @@ class _HomePageState extends State<HomePage> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
+            icon: Icon(
+              Icons.account_balance_wallet_outlined,
+            ),
+            selectedIcon: Icon(
+              Icons.account_balance_wallet,
+            ),
             label: 'Accounts',
           ),
           NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
+            icon: Icon(
+              Icons.receipt_long_outlined,
+            ),
+            selectedIcon: Icon(
+              Icons.receipt_long,
+            ),
             label: 'Transactions',
           ),
         ],
