@@ -43,6 +43,239 @@ class BorrowLendPage extends StatelessWidget {
     );
   }
 
+  Future<bool> _confirmDelete(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Completed Record?'),
+          content: const Text(
+            'Are you sure you want to permanently delete this '
+            'completed Borrow & Lend record and all its repayment '
+            'history?\n\n'
+            'Account balances will be recalculated accordingly. '
+            'This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _deleteRecord(
+    BuildContext context,
+    int recordId,
+  ) async {
+    try {
+      final deleted =
+          await database.deleteCompletedBorrowLend(recordId);
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            deleted
+                ? 'Completed record deleted successfully.'
+                : 'This record is not completed and cannot be deleted.',
+          ),
+          backgroundColor: deleted ? Colors.green : Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to delete this record.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Widget _buildRecordCard({
+    required BuildContext context,
+    required dynamic record,
+    required int outstanding,
+  }) {
+    final isBorrow = record.type.toLowerCase() == 'borrow';
+    final color = isBorrow ? Colors.red : Colors.green;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BorrowLendDetailsPage(
+                record: record,
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: color.withOpacity(0.10),
+                child: Icon(
+                  isBorrow
+                      ? Icons.call_received_rounded
+                      : Icons.call_made_rounded,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      record.personName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isBorrow ? 'Borrowed' : 'Lent',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Date: ${_formatDate(record.date)}',
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _formatMoney(outstanding),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    outstanding == 0
+                        ? 'Completed'
+                        : 'Outstanding',
+                    style: TextStyle(
+                      color: outstanding == 0
+                          ? Colors.green
+                          : Colors.orange,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecordItem({
+    required BuildContext context,
+    required dynamic record,
+    required int outstanding,
+  }) {
+    final card = _buildRecordCard(
+      context: context,
+      record: record,
+      outstanding: outstanding,
+    );
+
+    // Only completed records can be swiped to delete.
+    if (outstanding != 0) {
+      return card;
+    }
+
+    return Dismissible(
+      key: ValueKey(record.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmDelete(context),
+      onDismissed: (_) {
+        _deleteRecord(context, record.id);
+      },
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        alignment: Alignment.centerRight,
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.delete_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Delete',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+      child: card,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -242,114 +475,11 @@ class BorrowLendPage extends StatelessWidget {
                     ...List.generate(records.length, (index) {
                       final record = records[index];
                       final outstanding = outstandingAmounts[index];
-                      final isBorrow =
-                          record.type.toLowerCase() == 'borrow';
 
-                      final color =
-                          isBorrow ? Colors.red : Colors.green;
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        elevation: 1,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    BorrowLendDetailsPage(
-                                  record: record,
-                                ),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor:
-                                      color.withOpacity(0.10),
-                                  child: Icon(
-                                    isBorrow
-                                        ? Icons.call_received_rounded
-                                        : Icons.call_made_rounded,
-                                    color: color,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        record.personName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        isBorrow ? 'Borrowed' : 'Lent',
-                                        style: TextStyle(
-                                          color: color,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Date: ${_formatDate(record.date)}',
-                                        style: const TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      _formatMoney(outstanding),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      outstanding == 0
-                                          ? 'Completed'
-                                          : 'Outstanding',
-                                      style: TextStyle(
-                                        color: outstanding == 0
-                                            ? Colors.green
-                                            : Colors.orange,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Icon(
-                                      Icons.chevron_right,
-                                      color: Colors.grey,
-                                      size: 20,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                      return _buildRecordItem(
+                        context: context,
+                        record: record,
+                        outstanding: outstanding,
                       );
                     }),
                 ],
