@@ -668,6 +668,52 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  // DELETE ONLY COMPLETED BORROW & LEND RECORDS.
+  // Also deletes all repayment history.
+  Future<bool> deleteCompletedBorrowLend(
+    int borrowLendId,
+  ) async {
+    return transaction(() async {
+      final record = await (select(borrowLends)
+            ..where((item) => item.id.equals(borrowLendId)))
+          .getSingleOrNull();
+
+      if (record == null) {
+        return false;
+      }
+
+      final payments = await (select(borrowLendPayments)
+            ..where(
+              (payment) =>
+                  payment.borrowLendId.equals(borrowLendId),
+            ))
+          .get();
+
+      final totalPaid = payments.fold<int>(
+        0,
+        (total, payment) => total + payment.amountPaisa,
+      );
+
+      // Do not delete unpaid or partially paid records.
+      if (totalPaid < record.amountPaisa) {
+        return false;
+      }
+
+      await (delete(borrowLendPayments)
+            ..where(
+              (payment) =>
+                  payment.borrowLendId.equals(borrowLendId),
+            ))
+          .go();
+
+      await (delete(borrowLends)
+            ..where((item) => item.id.equals(borrowLendId)))
+          .go();
+
+      return true;
+    });
+  }
+
   // DUES
   Stream<List<Due>> watchDues() {
     return (select(dues)
