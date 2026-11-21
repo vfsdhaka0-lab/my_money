@@ -6,9 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../shared/database_instance.dart';
-
 import '../../core/utils/money_formatter.dart';
-import '../accounts/accounts_page.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -173,6 +171,93 @@ class _ReportsPageState extends State<ReportsPage> {
         ),
       ),
     );
+  }
+
+  // CALCULATE ACCOUNT BALANCE
+  //
+  // Uses the same balance rules as the Accounts page.
+  // Transfers and borrow/lend repayments are included.
+  int _accountBalance({
+    required dynamic account,
+    required List transactions,
+    required List duePayments,
+    required List transfers,
+    required List borrowLends,
+    required List borrowLendPayments,
+  }) {
+    var balance = account.openingBalancePaisa as int;
+
+    // Income and expenses.
+    for (final item in transactions) {
+      if (item.accountId != account.id) {
+        continue;
+      }
+
+      if (item.type == 'income') {
+        balance += item.paidAmountPaisa as int;
+      } else if (item.type == 'expense') {
+        balance -= item.paidAmountPaisa as int;
+      }
+    }
+
+    // Store due payments.
+    for (final payment in duePayments) {
+      if (payment.accountId == account.id) {
+        balance -= payment.amountPaisa as int;
+      }
+    }
+
+    // Account transfers.
+    for (final transfer in transfers) {
+      if (transfer.fromAccountId == account.id) {
+        balance -= transfer.amountPaisa as int;
+      }
+
+      if (transfer.toAccountId == account.id) {
+        balance += transfer.amountPaisa as int;
+      }
+    }
+
+    // Original borrowing and lending amounts.
+    for (final item in borrowLends) {
+      if (item.accountId != account.id) {
+        continue;
+      }
+
+      if (item.type == 'borrow') {
+        balance += item.amountPaisa as int;
+      } else if (item.type == 'lend') {
+        balance -= item.amountPaisa as int;
+      }
+    }
+
+    // Find borrow/lend records for repayments.
+    final borrowLendById = {
+      for (final item in borrowLends) item.id: item,
+    };
+
+    // Borrow and lend repayments.
+    for (final payment in borrowLendPayments) {
+      if (payment.accountId != account.id) {
+        continue;
+      }
+
+      final record = borrowLendById[payment.borrowLendId];
+
+      if (record == null) {
+        continue;
+      }
+
+      if (record.type == 'borrow') {
+        // Repaying borrowed money reduces the account.
+        balance -= payment.amountPaisa as int;
+      } else if (record.type == 'lend') {
+        // Receiving lent money increases the account.
+        balance += payment.amountPaisa as int;
+      }
+    }
+
+    return balance;
   }
 
   Widget _buildReportContent({
@@ -640,13 +725,13 @@ class _ReportsPageState extends State<ReportsPage> {
           _emptyMessage('No accounts available.')
         else
           ...accounts.map((account) {
-            final balance = AccountsPage.accountBalance(
-              account,
-              transactions,
-              duePayments,
-              transfers,
-              borrowLends,
-              borrowLendPayments,
+            final balance = _accountBalance(
+              account: account,
+              transactions: transactions,
+              duePayments: duePayments,
+              transfers: transfers,
+              borrowLends: borrowLends,
+              borrowLendPayments: borrowLendPayments,
             );
 
             return Container(
@@ -840,11 +925,15 @@ class _ReportsPageState extends State<ReportsPage> {
 
                               return StreamBuilder(
                                 stream: database
-                                    .watchBorrowLendPayments(),
-                                builder: (context, borrowPaymentSnapshot) {
+                                    .watchAllBorrowLendPayments(),
+                                builder: (
+                                  context,
+                                  borrowPaymentSnapshot,
+                                ) {
                                   if (!borrowPaymentSnapshot.hasData) {
                                     return const Center(
-                                      child: CircularProgressIndicator(),
+                                      child:
+                                          CircularProgressIndicator(),
                                     );
                                   }
 
@@ -852,7 +941,10 @@ class _ReportsPageState extends State<ReportsPage> {
                                     stream: database.watchCategories(
                                       type: 'expense',
                                     ),
-                                    builder: (context, categorySnapshot) {
+                                    builder: (
+                                      context,
+                                      categorySnapshot,
+                                    ) {
                                       if (!categorySnapshot.hasData) {
                                         return const Center(
                                           child:
