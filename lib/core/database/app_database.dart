@@ -536,6 +536,15 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  // Watch all borrow/lend repayments.
+  Stream<List<BorrowLendPayment>> watchAllBorrowLendPayments() {
+    return (select(borrowLendPayments)
+          ..orderBy([
+            (payment) => OrderingTerm.desc(payment.date),
+          ]))
+        .watch();
+  }
+
   // Add a new borrowing or lending record.
   Future<int> addBorrowLend({
     required String type,
