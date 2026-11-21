@@ -6,7 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../shared/database_instance.dart';
-import '../../core/database/app_database.dart';
+
 import '../../core/utils/money_formatter.dart';
 import '../accounts/accounts_page.dart';
 
