@@ -668,8 +668,10 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  // DELETE ONLY COMPLETED BORROW & LEND RECORDS.
-  // Also deletes all repayment history.
+  // DELETE COMPLETED BORROW & LEND RECORDS.
+  //
+  // Preserve the current balance of every affected account
+  // before deleting the original record and its repayments.
   Future<bool> deleteCompletedBorrowLend(
     int borrowLendId,
   ) async {
@@ -694,11 +696,76 @@ class AppDatabase extends _$AppDatabase {
         (total, payment) => total + payment.amountPaisa,
       );
 
-      // Do not delete unpaid or partially paid records.
-      if (totalPaid < record.amountPaisa) {
+      // Only exactly completed records can be deleted.
+      if (totalPaid != record.amountPaisa) {
         return false;
       }
 
+      // Calculate the balance effect for each account.
+      final adjustments = <int, int>{};
+
+      void addAdjustment(int accountId, int amount) {
+        adjustments[accountId] =
+            (adjustments[accountId] ?? 0) + amount;
+      }
+
+      // Preserve the original Borrow or Lend amount.
+      if (record.type == 'borrow') {
+        addAdjustment(
+          record.accountId,
+          record.amountPaisa,
+        );
+      } else if (record.type == 'lend') {
+        addAdjustment(
+          record.accountId,
+          -record.amountPaisa,
+        );
+      } else {
+        throw StateError('Invalid borrow/lend record type.');
+      }
+
+      // Preserve the effect of every repayment.
+      for (final payment in payments) {
+        if (record.type == 'borrow') {
+          // Borrow repayment reduces the repayment account.
+          addAdjustment(
+            payment.accountId,
+            -payment.amountPaisa,
+          );
+        } else {
+          // Lend repayment increases the repayment account.
+          addAdjustment(
+            payment.accountId,
+            payment.amountPaisa,
+          );
+        }
+      }
+
+      // Move the deleted balance effects into each account's
+      // opening-balance baseline.
+      for (final entry in adjustments.entries) {
+        if (entry.value == 0) continue;
+
+        final account = await (select(accounts)
+              ..where((a) => a.id.equals(entry.key)))
+            .getSingleOrNull();
+
+        if (account == null) {
+          throw StateError('An affected account was not found.');
+        }
+
+        await (update(accounts)
+              ..where((a) => a.id.equals(entry.key)))
+            .write(
+          AccountsCompanion(
+            openingBalancePaisa: Value(
+              account.openingBalancePaisa + entry.value,
+            ),
+          ),
+        );
+      }
+
+      // Delete repayment history.
       await (delete(borrowLendPayments)
             ..where(
               (payment) =>
@@ -706,6 +773,7 @@ class AppDatabase extends _$AppDatabase {
             ))
           .go();
 
+      // Delete the completed record.
       await (delete(borrowLends)
             ..where((item) => item.id.equals(borrowLendId)))
           .go();
