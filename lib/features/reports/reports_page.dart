@@ -939,7 +939,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
                                   return StreamBuilder(
                                     stream: database.watchCategories(
-                                      type: 'expense',
+                                      type: 'Expense',
                                     ),
                                     builder: (
                                       context,
