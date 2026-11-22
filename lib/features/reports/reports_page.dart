@@ -29,6 +29,8 @@ class _ReportsPageState extends State<ReportsPage> {
   late DateTime startDate;
   late DateTime endDate;
 
+  String paymentFilter = 'All Payments';
+
   @override
   void initState() {
     super.initState();
@@ -285,6 +287,296 @@ class _ReportsPageState extends State<ReportsPage> {
     return balance;
   }
 
+  // BUILD A COMBINED PAYMENT HISTORY.
+  // Store due payments, borrow repayments and lend repayments.
+  List<Map<String, dynamic>> _paymentHistoryRecords({
+    required List accounts,
+    required List duePayments,
+    required List dues,
+    required List borrowLends,
+    required List borrowLendPayments,
+  }) {
+    final accountById = {
+      for (final account in accounts) account.id: account,
+    };
+
+    final dueById = {
+      for (final due in dues) due.id: due,
+    };
+
+    final borrowLendById = {
+      for (final item in borrowLends) item.id: item,
+    };
+
+    final records = <Map<String, dynamic>>[];
+
+    // Store due payments.
+    for (final payment in duePayments) {
+      if (!_isInSelectedRange(payment.date)) {
+        continue;
+      }
+
+      final due = dueById[payment.dueId];
+
+      if (due == null) {
+        continue;
+      }
+
+      final account = accountById[payment.accountId];
+
+      records.add({
+        'type': 'Store Due',
+        'name': due.storeName.toString(),
+        'date': payment.date as DateTime,
+        'account': account?.name.toString() ?? 'Unknown Account',
+        'amount': payment.amountPaisa as int,
+        'direction': 'out',
+        'note': payment.note?.toString() ?? '',
+      });
+    }
+
+    // Borrow and lend repayments.
+    for (final payment in borrowLendPayments) {
+      if (!_isInSelectedRange(payment.date)) {
+        continue;
+      }
+
+      final record = borrowLendById[payment.borrowLendId];
+
+      if (record == null) {
+        continue;
+      }
+
+      final account = accountById[payment.accountId];
+
+      final isBorrow = record.type == 'borrow';
+
+      records.add({
+        'type': isBorrow
+            ? 'Borrow Repayment'
+            : 'Lend Repayment',
+        'name': record.personName.toString(),
+        'date': payment.date as DateTime,
+        'account': account?.name.toString() ?? 'Unknown Account',
+        'amount': payment.amountPaisa as int,
+        'direction': isBorrow ? 'out' : 'in',
+        'note': payment.note?.toString() ?? '',
+      });
+    }
+
+    records.sort((a, b) {
+      final dateA = a['date'] as DateTime;
+      final dateB = b['date'] as DateTime;
+
+      return dateB.compareTo(dateA);
+    });
+
+    return records;
+  }
+
+  // PAYMENT HISTORY SECTION.
+  Widget _buildPaymentHistory({
+    required List accounts,
+    required List duePayments,
+    required List dues,
+    required List borrowLends,
+    required List borrowLendPayments,
+  }) {
+    final allRecords = _paymentHistoryRecords(
+      accounts: accounts,
+      duePayments: duePayments,
+      dues: dues,
+      borrowLends: borrowLends,
+      borrowLendPayments: borrowLendPayments,
+    );
+
+    final filteredRecords = allRecords.where((record) {
+      if (paymentFilter == 'All Payments') {
+        return true;
+      }
+
+      if (paymentFilter == 'Store Due') {
+        return record['type'] == 'Store Due';
+      }
+
+      if (paymentFilter == 'Borrow') {
+        return record['type'] == 'Borrow Repayment';
+      }
+
+      if (paymentFilter == 'Lend') {
+        return record['type'] == 'Lend Repayment';
+      }
+
+      return true;
+    }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Payment History'),
+
+        // Payment type filters.
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              'All Payments',
+              'Store Due',
+              'Borrow',
+              'Lend',
+            ].map((filter) {
+              final selected = paymentFilter == filter;
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(filter),
+                  selected: selected,
+                  selectedColor: primary.withOpacity(0.18),
+                  labelStyle: TextStyle(
+                    color: selected
+                        ? primary
+                        : Colors.grey.shade700,
+                    fontWeight: selected
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                  ),
+                  side: BorderSide(
+                    color: selected
+                        ? primary
+                        : Colors.grey.withOpacity(0.25),
+                  ),
+                  onSelected: (_) {
+                    setState(() {
+                      paymentFilter = filter;
+                    });
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        if (filteredRecords.isEmpty)
+          _emptyMessage('No completed payments in this period.')
+        else
+          ...filteredRecords.map((record) {
+            final type = record['type'] as String;
+            final name = record['name'] as String;
+            final date = record['date'] as DateTime;
+            final account = record['account'] as String;
+            final amount = record['amount'] as int;
+            final direction = record['direction'] as String;
+            final note = record['note'] as String;
+
+            final isMoneyIn = direction == 'in';
+
+            final Color amountColor = isMoneyIn
+                ? Colors.green
+                : Colors.red;
+
+            final IconData icon;
+
+            if (type == 'Store Due') {
+              icon = Icons.store_outlined;
+            } else if (type == 'Borrow Repayment') {
+              icon = Icons.call_received_rounded;
+            } else {
+              icon = Icons.call_made_rounded;
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Colors.grey.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 43,
+                    height: 43,
+                    decoration: BoxDecoration(
+                      color: amountColor.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: amountColor,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          type,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_dateText(date)} • $account',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        if (note.trim().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            note,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${isMoneyIn ? '+' : '-'}${formatMoney(amount)}',
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      color: amountColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
   // EXPORT FINANCIAL REPORT AS PDF.
   Future<void> _exportPdf({
     required int totalIncome,
@@ -296,6 +588,7 @@ class _ReportsPageState extends State<ReportsPage> {
     required List accounts,
     required List transactions,
     required List duePayments,
+    required List dues,
     required List transfers,
     required List borrowLends,
     required List borrowLendPayments,
@@ -317,6 +610,27 @@ class _ReportsPageState extends State<ReportsPage> {
       return [
         account.name.toString(),
         _pdfMoney(balance),
+      ];
+    }).toList();
+
+    final paymentRecords = _paymentHistoryRecords(
+      accounts: accounts,
+      duePayments: duePayments,
+      dues: dues,
+      borrowLends: borrowLends,
+      borrowLendPayments: borrowLendPayments,
+    );
+
+    final paymentRows = paymentRecords.map((record) {
+      final direction = record['direction'] as String;
+      final amount = record['amount'] as int;
+
+      return [
+        record['type'].toString(),
+        record['name'].toString(),
+        _dateText(record['date'] as DateTime),
+        record['account'].toString(),
+        '${direction == 'in' ? '+' : '-'}${_pdfMoney(amount)}',
       ];
     }).toList();
 
@@ -462,6 +776,39 @@ class _ReportsPageState extends State<ReportsPage> {
               data: accountRows,
               headerStyle: pw.TextStyle(
                 fontWeight: pw.FontWeight.bold,
+              ),
+              headerDecoration: pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Payment History',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (paymentRows.isEmpty)
+            pw.Text('No completed payments in this period.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: [
+                'Type',
+                'Person / Store',
+                'Date',
+                'Account',
+                'Amount',
+              ],
+              data: paymentRows,
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+              ),
+              cellStyle: const pw.TextStyle(
+                fontSize: 8,
               ),
               headerDecoration: pw.BoxDecoration(
                 color: PdfColors.grey300,
@@ -777,6 +1124,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   accounts: accounts,
                   transactions: transactions,
                   duePayments: duePayments,
+                  dues: dues,
                   transfers: transfers,
                   borrowLends: borrowLends,
                   borrowLendPayments: borrowLendPayments,
@@ -1051,6 +1399,15 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             );
           }),
+
+        // Completed payment history.
+        _buildPaymentHistory(
+          accounts: accounts,
+          duePayments: duePayments,
+          dues: dues,
+          borrowLends: borrowLends,
+          borrowLendPayments: borrowLendPayments,
+        ),
       ],
     );
   }
