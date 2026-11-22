@@ -715,6 +715,8 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   // EXPORT FINANCIAL REPORT AS PDF.
+  // Account Balance Summary first.
+  // Payment History last.
   Future<void> _exportPdf({
     required int totalIncome,
     required int totalExpense,
@@ -822,6 +824,32 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
           pw.Divider(height: 28),
 
+          // 1. ACCOUNT BALANCE SUMMARY.
+          pw.Text(
+            'Account Balance Summary',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (accountRows.isEmpty)
+            pw.Text('No accounts available.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: ['Account', 'Balance'],
+              data: accountRows,
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+              ),
+              headerDecoration: pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          // 2. INCOME & EXPENSES.
+          pw.SizedBox(height: 24),
           pw.Text(
             'Income & Expenses',
             style: pw.TextStyle(
@@ -847,6 +875,7 @@ class _ReportsPageState extends State<ReportsPage> {
             ),
           ),
 
+          // 3. EXPENSE BY CATEGORY.
           pw.SizedBox(height: 24),
           pw.Text(
             'Expense by Category',
@@ -884,6 +913,7 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             ),
 
+          // 4. MONTHLY INCOME & EXPENSES.
           pw.SizedBox(height: 24),
           pw.Text(
             'Monthly Income & Expenses',
@@ -920,9 +950,10 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             ),
 
+          // 5. STORE-WISE TOTAL DUE PAYMENTS.
           pw.SizedBox(height: 24),
           pw.Text(
-            'Account Balance Summary',
+            'Store-wise Total Due Payments',
             style: pw.TextStyle(
               fontSize: 17,
               fontWeight: pw.FontWeight.bold,
@@ -930,12 +961,12 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
           pw.SizedBox(height: 10),
 
-          if (accountRows.isEmpty)
-            pw.Text('No accounts available.')
+          if (storeTotals.isEmpty)
+            pw.Text('No store due payments in this period.')
           else
             pw.TableHelper.fromTextArray(
-              headers: ['Account', 'Balance'],
-              data: accountRows,
+              headers: ['Store', 'Total Paid'],
+              data: summaryRows(storeTotals),
               headerStyle: pw.TextStyle(
                 fontWeight: pw.FontWeight.bold,
               ),
@@ -944,6 +975,57 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             ),
 
+          // 6. TOTAL BORROW - PERSON WISE.
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Total Borrow',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (borrowTotals.isEmpty)
+            pw.Text('No completed borrow records in this period.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: ['Person', 'Total Paid'],
+              data: summaryRows(borrowTotals),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+              ),
+              headerDecoration: pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          // 7. TOTAL LEND - PERSON WISE.
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Total Lend',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (lendTotals.isEmpty)
+            pw.Text('No completed lend records in this period.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: ['Person', 'Total Received'],
+              data: summaryRows(lendTotals),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+              ),
+              headerDecoration: pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          // 8. PAYMENT HISTORY - LAST.
           pw.SizedBox(height: 24),
           pw.Text(
             'Payment History',
@@ -977,78 +1059,7 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             ),
 
-          pw.SizedBox(height: 24),
-          pw.Text(
-            'Store-wise Total Due Payments',
-            style: pw.TextStyle(
-              fontSize: 17,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-          pw.SizedBox(height: 10),
-
-          if (storeTotals.isEmpty)
-            pw.Text('No store due payments in this period.')
-          else
-            pw.TableHelper.fromTextArray(
-              headers: ['Store', 'Total Paid'],
-              data: summaryRows(storeTotals),
-              headerStyle: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold,
-              ),
-              headerDecoration: pw.BoxDecoration(
-                color: PdfColors.grey300,
-              ),
-            ),
-
-          pw.SizedBox(height: 24),
-          pw.Text(
-            'Total Borrow',
-            style: pw.TextStyle(
-              fontSize: 17,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-          pw.SizedBox(height: 10),
-
-          if (borrowTotals.isEmpty)
-            pw.Text('No completed borrow records in this period.')
-          else
-            pw.TableHelper.fromTextArray(
-              headers: ['Person', 'Total Paid'],
-              data: summaryRows(borrowTotals),
-              headerStyle: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold,
-              ),
-              headerDecoration: pw.BoxDecoration(
-                color: PdfColors.grey300,
-              ),
-            ),
-
-          pw.SizedBox(height: 24),
-          pw.Text(
-            'Total Lend',
-            style: pw.TextStyle(
-              fontSize: 17,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-          pw.SizedBox(height: 10),
-
-          if (lendTotals.isEmpty)
-            pw.Text('No completed lend records in this period.')
-          else
-            pw.TableHelper.fromTextArray(
-              headers: ['Person', 'Total Received'],
-              data: summaryRows(lendTotals),
-              headerStyle: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold,
-              ),
-              headerDecoration: pw.BoxDecoration(
-                color: PdfColors.grey300,
-              ),
-            ),
-
+          // FOOTER.
           pw.SizedBox(height: 30),
           pw.Divider(),
           pw.Center(
