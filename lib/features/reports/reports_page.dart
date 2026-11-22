@@ -1015,7 +1015,7 @@ class _ReportsPageState extends State<ReportsPage> {
             pw.Text('No completed borrow records in this period.')
           else
             pw.TableHelper.fromTextArray(
-              headers: ['Person', 'Total Borrowed'],
+              headers: ['Person', 'Total Paid'],
               data: summaryRows(borrowTotals),
               headerStyle: pw.TextStyle(
                 fontWeight: pw.FontWeight.bold,
@@ -1039,7 +1039,7 @@ class _ReportsPageState extends State<ReportsPage> {
             pw.Text('No completed lend records in this period.')
           else
             pw.TableHelper.fromTextArray(
-              headers: ['Person', 'Total Lent'],
+              headers: ['Person', 'Total Received'],
               data: summaryRows(lendTotals),
               headerStyle: pw.TextStyle(
                 fontWeight: pw.FontWeight.bold,
