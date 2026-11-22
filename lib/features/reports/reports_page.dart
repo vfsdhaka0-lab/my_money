@@ -4,6 +4,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../shared/database_instance.dart';
 import '../../core/utils/money_formatter.dart';
@@ -96,6 +98,18 @@ class _ReportsPageState extends State<ReportsPage> {
     ];
 
     return '${months[month - 1]} $year';
+  }
+
+  String _pdfMoney(int paisa) {
+    final absoluteAmount = paisa.abs();
+    final taka = absoluteAmount ~/ 100;
+    final remainder = (absoluteAmount % 100)
+        .toString()
+        .padLeft(2, '0');
+
+    final sign = paisa < 0 ? '-' : '';
+
+    return 'BDT $sign$taka.$remainder';
   }
 
   Widget _sectionTitle(String title) {
@@ -249,15 +263,221 @@ class _ReportsPageState extends State<ReportsPage> {
       }
 
       if (record.type == 'borrow') {
-        // Repaying borrowed money reduces the account.
         balance -= payment.amountPaisa as int;
       } else if (record.type == 'lend') {
-        // Receiving lent money increases the account.
         balance += payment.amountPaisa as int;
       }
     }
 
     return balance;
+  }
+
+  // EXPORT FINANCIAL REPORT AS PDF.
+  Future<void> _exportPdf({
+    required int totalIncome,
+    required int totalExpense,
+    required List sortedCategories,
+    required Map<int, String> categoryNames,
+    required List visibleMonths,
+    required Map<String, Map<String, int>> monthlyTotals,
+    required List accounts,
+    required List transactions,
+    required List duePayments,
+    required List transfers,
+    required List borrowLends,
+    required List borrowLendPayments,
+  }) async {
+    final document = pw.Document();
+
+    final netIncome = totalIncome - totalExpense;
+
+    final accountRows = accounts.map((account) {
+      final balance = _accountBalance(
+        account: account,
+        transactions: transactions,
+        duePayments: duePayments,
+        transfers: transfers,
+        borrowLends: borrowLends,
+        borrowLendPayments: borrowLendPayments,
+      );
+
+      return [
+        account.name.toString(),
+        _pdfMoney(balance),
+      ];
+    }).toList();
+
+    document.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (context) => [
+          pw.Text(
+            'MyMoney',
+            style: pw.TextStyle(
+              fontSize: 26,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            'Financial Report',
+            style: const pw.TextStyle(
+              fontSize: 17,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'Report Period: ${_dateText(startDate)} - '
+            '${_dateText(endDate)}',
+          ),
+          pw.Divider(height: 28),
+
+          // Income and expenses.
+          pw.Text(
+            'Income & Expenses',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          pw.TableHelper.fromTextArray(
+            headers: ['Description', 'Amount'],
+            data: [
+              ['Total Income', _pdfMoney(totalIncome)],
+              ['Total Expenses', _pdfMoney(totalExpense)],
+              ['Net Income', _pdfMoney(netIncome)],
+            ],
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+            ),
+            cellAlignment: pw.Alignment.centerLeft,
+            headerDecoration: const pw.BoxDecoration(
+              color: PdfColors.grey300,
+            ),
+          ),
+
+          // Expense categories.
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Expense by Category',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (sortedCategories.isEmpty)
+            pw.Text('No expenses in this period.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: ['Category', 'Amount', 'Percentage'],
+              data: sortedCategories.map((entry) {
+                final name = categoryNames[entry.key] ??
+                    'Unknown Category';
+
+                final percentage = totalExpense == 0
+                    ? 0.0
+                    : entry.value / totalExpense * 100;
+
+                return [
+                  name,
+                  _pdfMoney(entry.value as int),
+                  '${percentage.toStringAsFixed(1)}%',
+                ];
+              }).toList(),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+              ),
+              headerDecoration: const pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          // Monthly trends.
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Monthly Income & Expenses',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (visibleMonths.isEmpty)
+            pw.Text('No monthly data available.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: [
+                'Month',
+                'Income',
+                'Expenses',
+              ],
+              data: visibleMonths.map((month) {
+                final values = monthlyTotals[month]!;
+
+                return [
+                  _monthText(month),
+                  _pdfMoney(values['income'] ?? 0),
+                  _pdfMoney(values['expense'] ?? 0),
+                ];
+              }).toList(),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+              ),
+              headerDecoration: const pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          // Account balances.
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Account Balance Summary',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (accountRows.isEmpty)
+            pw.Text('No accounts available.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: ['Account', 'Balance'],
+              data: accountRows,
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+              ),
+              headerDecoration: const pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          pw.SizedBox(height: 30),
+          pw.Divider(),
+          pw.Center(
+            child: pw.Text(
+              'Generated by MyMoney',
+              style: const pw.TextStyle(
+                fontSize: 10,
+                color: PdfColors.grey700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await Printing.sharePdf(
+      bytes: await document.save(),
+      filename: 'mymoney_financial_report.pdf',
+    );
   }
 
   Widget _buildReportContent({
@@ -527,6 +747,50 @@ class _ReportsPageState extends State<ReportsPage> {
                 ],
               ),
             ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Export PDF button.
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              try {
+                await _exportPdf(
+                  totalIncome: totalIncome,
+                  totalExpense: totalExpense,
+                  sortedCategories: sortedCategories,
+                  categoryNames: categoryNames,
+                  visibleMonths: visibleMonths,
+                  monthlyTotals: monthlyTotals,
+                  accounts: accounts,
+                  transactions: transactions,
+                  duePayments: duePayments,
+                  transfers: transfers,
+                  borrowLends: borrowLends,
+                  borrowLendPayments: borrowLendPayments,
+                );
+              } catch (error) {
+                if (!mounted) return;
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Could not export PDF: $error',
+                    ),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.picture_as_pdf),
+            label: const Text('Export PDF'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
           ),
         ),
 
