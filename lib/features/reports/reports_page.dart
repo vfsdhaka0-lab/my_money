@@ -99,8 +99,18 @@ class _ReportsPageState extends State<ReportsPage> {
     final month = int.parse(parts[1]);
 
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
 
     return '${months[month - 1]} $year';
@@ -1199,8 +1209,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                 ) {
                                   if (!borrowPaymentSnapshot.hasData) {
                                     return const Center(
-                                      child:
-                                          CircularProgressIndicator(),
+                                      child: CircularProgressIndicator(),
                                     );
                                   }
 
@@ -1214,8 +1223,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                     ) {
                                       if (!categorySnapshot.hasData) {
                                         return const Center(
-                                          child:
-                                              CircularProgressIndicator(),
+                                          child: CircularProgressIndicator(),
                                         );
                                       }
 
@@ -1236,14 +1244,6 @@ class _ReportsPageState extends State<ReportsPage> {
                                             categorySnapshot.data!,
                                       );
                                     },
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
                                   );
                                 },
                               );
