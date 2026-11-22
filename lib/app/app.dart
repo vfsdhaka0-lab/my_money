@@ -193,7 +193,7 @@ class _HomePageState extends State<HomePage> {
           const DuesPage(),
           BorrowLendPage(onMenuPressed: _openDrawer),
           const BackupPage(),
-          const ReportsPage(),
+          ReportsPage(onMenuPressed: _openDrawer),
         ],
       ),
 
