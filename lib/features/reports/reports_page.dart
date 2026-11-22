@@ -1003,7 +1003,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
           pw.SizedBox(height: 24),
           pw.Text(
-            'Total Borrow — Person Wise',
+            'Total Borrow',
             style: pw.TextStyle(
               fontSize: 17,
               fontWeight: pw.FontWeight.bold,
@@ -1027,7 +1027,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
           pw.SizedBox(height: 24),
           pw.Text(
-            'Total Lend — Person Wise',
+            'Total Lend',
             style: pw.TextStyle(
               fontSize: 17,
               fontWeight: pw.FontWeight.bold,
