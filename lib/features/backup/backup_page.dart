@@ -1,5 +1,5 @@
 
- // ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'dart:async';
 
@@ -11,7 +11,12 @@ import '../../core/backup/backup_restore_service.dart';
 import '../../core/backup/google_drive_auth.dart';
 
 class BackupPage extends StatefulWidget {
-  const BackupPage({super.key});
+  final VoidCallback onMenuPressed;
+
+  const BackupPage({
+    super.key,
+    required this.onMenuPressed,
+  });
 
   @override
   State<BackupPage> createState() => _BackupPageState();
@@ -237,6 +242,11 @@ class _BackupPageState extends State<BackupPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onMenuPressed,
+          tooltip: 'Open menu',
+        ),
         title: const Text('Backup & Restore'),
         actions: [
           IconButton(
@@ -275,7 +285,6 @@ class _BackupPageState extends State<BackupPage>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -290,7 +299,6 @@ class _BackupPageState extends State<BackupPage>
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     if (_loadingBackupInfo)
                       const Center(
                         child: CircularProgressIndicator(),
@@ -368,9 +376,7 @@ class _BackupPageState extends State<BackupPage>
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
