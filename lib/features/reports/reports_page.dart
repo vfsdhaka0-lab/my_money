@@ -11,7 +11,12 @@ import '../../shared/database_instance.dart';
 import '../../core/utils/money_formatter.dart';
 
 class ReportsPage extends StatefulWidget {
-  const ReportsPage({super.key});
+  final VoidCallback onMenuPressed;
+
+  const ReportsPage({
+    super.key,
+    required this.onMenuPressed,
+  });
 
   @override
   State<ReportsPage> createState() => _ReportsPageState();
@@ -187,10 +192,8 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  // CALCULATE ACCOUNT BALANCE
-  //
+  // CALCULATE ACCOUNT BALANCE.
   // Uses the same balance rules as the Accounts page.
-  // Transfers and borrow/lend repayments are included.
   int _accountBalance({
     required dynamic account,
     required List transactions,
@@ -245,7 +248,6 @@ class _ReportsPageState extends State<ReportsPage> {
       }
     }
 
-    // Find borrow/lend records for repayments.
     final borrowLendById = {
       for (final item in borrowLends) item.id: item,
     };
@@ -333,7 +335,6 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
           pw.Divider(height: 28),
 
-          // Income and expenses.
           pw.Text(
             'Income & Expenses',
             style: pw.TextStyle(
@@ -359,7 +360,6 @@ class _ReportsPageState extends State<ReportsPage> {
             ),
           ),
 
-          // Expense categories.
           pw.SizedBox(height: 24),
           pw.Text(
             'Expense by Category',
@@ -397,7 +397,6 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             ),
 
-          // Monthly trends.
           pw.SizedBox(height: 24),
           pw.Text(
             'Monthly Income & Expenses',
@@ -434,7 +433,6 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             ),
 
-          // Account balances.
           pw.SizedBox(height: 24),
           pw.Text(
             'Account Balance Summary',
@@ -566,7 +564,7 @@ class _ReportsPageState extends State<ReportsPage> {
     }
 
     // Later payments for store dues.
-    // These are attributed to the original purchase category.
+    // Attributed to the original purchase category.
     for (final payment in duePayments) {
       if (!_isInSelectedRange(payment.date)) {
         continue;
@@ -1120,6 +1118,10 @@ class _ReportsPageState extends State<ReportsPage> {
         foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onMenuPressed,
+        ),
         title: const Text(
           'Financial Reports',
           style: TextStyle(
