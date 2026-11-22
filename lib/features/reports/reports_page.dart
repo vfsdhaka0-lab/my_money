@@ -374,6 +374,143 @@ class _ReportsPageState extends State<ReportsPage> {
     return records;
   }
 
+  // STORE-WISE TOTAL DUE PAYMENTS.
+  // Uses payment dates within the selected report period.
+  Map<String, int> _storeWiseDueTotals({
+    required List duePayments,
+    required List dues,
+  }) {
+    final dueById = {
+      for (final due in dues) due.id: due,
+    };
+
+    final totals = <String, int>{};
+
+    for (final payment in duePayments) {
+      if (!_isInSelectedRange(payment.date)) {
+        continue;
+      }
+
+      final due = dueById[payment.dueId];
+
+      if (due == null) {
+        continue;
+      }
+
+      final storeName = due.storeName.toString();
+
+      totals[storeName] =
+          (totals[storeName] ?? 0) +
+          (payment.amountPaisa as int);
+    }
+
+    return totals;
+  }
+
+  // PERSON-WISE TOTAL BORROW AND LEND.
+  // Only fully completed records created within the selected period.
+  Map<String, int> _personWiseCompletedTotals({
+    required List borrowLends,
+    required List borrowLendPayments,
+    required String type,
+  }) {
+    final totals = <String, int>{};
+    final paymentsByRecord = <int, int>{};
+
+    for (final payment in borrowLendPayments) {
+      paymentsByRecord[payment.borrowLendId] =
+          (paymentsByRecord[payment.borrowLendId] ?? 0) +
+          (payment.amountPaisa as int);
+    }
+
+    for (final record in borrowLends) {
+      if (record.type != type) {
+        continue;
+      }
+
+      if (!_isInSelectedRange(record.date)) {
+        continue;
+      }
+
+      final originalAmount = record.amountPaisa as int;
+      final totalPaid = paymentsByRecord[record.id] ?? 0;
+
+      // Only fully paid records.
+      if (totalPaid < originalAmount) {
+        continue;
+      }
+
+      final personName = record.personName.toString();
+
+      totals[personName] =
+          (totals[personName] ?? 0) + originalAmount;
+    }
+
+    return totals;
+  }
+
+  // BUILD A REUSABLE SUMMARY LIST.
+  Widget _buildGroupedTotals({
+    required String title,
+    required Map<String, int> totals,
+    required IconData icon,
+    required Color color,
+    String emptyMessage = 'No payments in this period.',
+  }) {
+    final entries = totals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(title),
+        if (entries.isEmpty)
+          _emptyMessage(emptyMessage)
+        else
+          ...entries.map((entry) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 9),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Colors.grey.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      entry.key,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    formatMoney(entry.value),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
   // PAYMENT HISTORY SECTION.
   Widget _buildPaymentHistory({
     required List accounts,
@@ -561,7 +698,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${isMoneyIn ? '+' : '-'}${formatMoney(amount)}',
+                    formatMoney(amount),
                     textAlign: TextAlign.end,
                     style: TextStyle(
                       color: amountColor,
@@ -622,7 +759,6 @@ class _ReportsPageState extends State<ReportsPage> {
     );
 
     final paymentRows = paymentRecords.map((record) {
-      final direction = record['direction'] as String;
       final amount = record['amount'] as int;
 
       return [
@@ -630,9 +766,35 @@ class _ReportsPageState extends State<ReportsPage> {
         record['name'].toString(),
         _dateText(record['date'] as DateTime),
         record['account'].toString(),
-        '${direction == 'in' ? '+' : '-'}${_pdfMoney(amount)}',
+        _pdfMoney(amount),
       ];
     }).toList();
+
+    final storeTotals = _storeWiseDueTotals(
+      duePayments: duePayments,
+      dues: dues,
+    );
+
+    final borrowTotals = _personWiseCompletedTotals(
+      borrowLends: borrowLends,
+      borrowLendPayments: borrowLendPayments,
+      type: 'borrow',
+    );
+
+    final lendTotals = _personWiseCompletedTotals(
+      borrowLends: borrowLends,
+      borrowLendPayments: borrowLendPayments,
+      type: 'lend',
+    );
+
+    List<List<String>> summaryRows(Map<String, int> totals) {
+      return totals.entries
+          .map((entry) => [
+                entry.key,
+                _pdfMoney(entry.value),
+              ])
+          .toList();
+    }
 
     document.addPage(
       pw.MultiPage(
@@ -809,6 +971,78 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
               cellStyle: const pw.TextStyle(
                 fontSize: 8,
+              ),
+              headerDecoration: pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Store-wise Total Due Payments',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (storeTotals.isEmpty)
+            pw.Text('No store due payments in this period.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: ['Store', 'Total Paid'],
+              data: summaryRows(storeTotals),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+              ),
+              headerDecoration: pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Total Borrow — Person Wise',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (borrowTotals.isEmpty)
+            pw.Text('No completed borrow records in this period.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: ['Person', 'Total Borrowed'],
+              data: summaryRows(borrowTotals),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+              ),
+              headerDecoration: pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+            ),
+
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Total Lend — Person Wise',
+            style: pw.TextStyle(
+              fontSize: 17,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+
+          if (lendTotals.isEmpty)
+            pw.Text('No completed lend records in this period.')
+          else
+            pw.TableHelper.fromTextArray(
+              headers: ['Person', 'Total Lent'],
+              data: summaryRows(lendTotals),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
               ),
               headerDecoration: pw.BoxDecoration(
                 color: PdfColors.grey300,
@@ -1399,6 +1633,45 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             );
           }),
+
+        // Store-wise total due payments.
+        _buildGroupedTotals(
+          title: 'Store-wise Total Due Payments',
+          totals: _storeWiseDueTotals(
+            duePayments: duePayments,
+            dues: dues,
+          ),
+          icon: Icons.store_outlined,
+          color: Colors.red,
+        ),
+
+        // Completed borrow repayments by person.
+        _buildGroupedTotals(
+          title: 'Total Borrow — Person Wise',
+          totals: _personWiseCompletedTotals(
+            borrowLends: borrowLends,
+            borrowLendPayments: borrowLendPayments,
+            type: 'borrow',
+          ),
+          icon: Icons.call_received_rounded,
+          color: Colors.orange,
+          emptyMessage:
+              'No completed borrow payments in this period.',
+        ),
+
+        // Completed lend repayments by person.
+        _buildGroupedTotals(
+          title: 'Total Lend — Person Wise',
+          totals: _personWiseCompletedTotals(
+            borrowLends: borrowLends,
+            borrowLendPayments: borrowLendPayments,
+            type: 'lend',
+          ),
+          icon: Icons.call_made_rounded,
+          color: Colors.green,
+          emptyMessage:
+              'No completed lend payments in this period.',
+        ),
 
         // Completed payment history.
         _buildPaymentHistory(
