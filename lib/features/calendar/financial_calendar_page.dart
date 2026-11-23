@@ -64,10 +64,6 @@ class _FinancialCalendarPageState
     return '${date.day} ${_monthName(date.month)} ${date.year}';
   }
 
-  String _formatShortDate(DateTime date) {
-    return '${date.day} ${_monthName(date.month).substring(0, 3)}';
-  }
-
   void _changeMonth(int amount) {
     setState(() {
       selectedMonth = DateTime(
