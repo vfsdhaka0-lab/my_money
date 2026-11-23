@@ -10,6 +10,7 @@ import '../features/dues/dues_page.dart';
 import '../features/borrow_lend/borrow_lend_page.dart';
 import '../features/backup/backup_page.dart';
 import '../features/reports/reports_page.dart';
+import '../features/calendar/financial_calendar_page.dart';
 import 'theme.dart';
 
 class MyMoneyApp extends StatelessWidget {
@@ -63,6 +64,7 @@ class _HomePageState extends State<HomePage> {
       'Borrow & Lend',
       'Backup & Restore',
       'Financial Reports',
+      'Financial Calendar',
     ];
 
     return Scaffold(
@@ -71,7 +73,8 @@ class _HomePageState extends State<HomePage> {
       appBar: selectedIndex == 2 ||
               selectedIndex == 4 ||
               selectedIndex == 5 ||
-              selectedIndex == 6
+              selectedIndex == 6 ||
+              selectedIndex == 7
           ? null
           : AppBar(
               backgroundColor: primary,
@@ -180,6 +183,15 @@ class _HomePageState extends State<HomePage> {
               selected: selectedIndex == 6,
               onTap: () => selectPage(6),
             ),
+
+            ListTile(
+              leading: const Icon(
+                Icons.calendar_month_outlined,
+              ),
+              title: const Text('Financial Calendar'),
+              selected: selectedIndex == 7,
+              onTap: () => selectPage(7),
+            ),
           ],
         ),
       ),
@@ -194,6 +206,7 @@ class _HomePageState extends State<HomePage> {
           BorrowLendPage(onMenuPressed: _openDrawer),
           BackupPage(onMenuPressed: _openDrawer),
           ReportsPage(onMenuPressed: _openDrawer),
+          FinancialCalendarPage(onMenuPressed: _openDrawer),
         ],
       ),
 
