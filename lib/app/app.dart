@@ -1,8 +1,10 @@
 
-// ignore_for_file: deprecated_member_use
+ // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
+import '../features/auth/login_page.dart';
 import '../features/accounts/accounts_page.dart';
 import '../features/transactions/transactions_page.dart';
 import '../features/categories/categories_page.dart';
@@ -22,7 +24,33 @@ class MyMoneyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'MyMoney',
       theme: AppTheme.lightTheme,
-      home: const HomePage(),
+      home: const AuthGate(),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (snapshot.hasData) {
+          return const HomePage();
+        }
+
+        return const LoginPage();
+      },
     );
   }
 }
@@ -60,7 +88,6 @@ class _HomePageState extends State<HomePage> {
         selectedIndex = 0;
       });
     } else {
-      // Allow normal Android back behavior on Accounts.
       Navigator.of(context).maybePop();
     }
   }
