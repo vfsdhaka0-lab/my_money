@@ -1,5 +1,6 @@
 
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis_auth/googleapis_auth.dart' show AuthClient;
 
@@ -11,6 +12,8 @@ class GoogleDriveAuth {
   static final GoogleDriveAuth instance = GoogleDriveAuth._();
 
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
   bool _initialized = false;
 
@@ -44,19 +47,48 @@ class GoogleDriveAuth {
   Future<GoogleSignInAccount> signIn() async {
     await initialize();
 
-    // First try to restore the previously selected Google account.
     final existingAccount = await tryRestoreSignIn();
 
     if (existingAccount != null) {
       return existingAccount;
     }
 
-    // Show the account chooser only when no account can be restored.
     final account = await _googleSignIn.authenticate();
 
     _currentUser = account;
 
     return account;
+  }
+
+  Future<UserCredential> signInToMyMoney() async {
+    await initialize();
+
+    final GoogleSignInAccount googleUser =
+        await signIn();
+
+    final googleAuthentication =
+        googleUser.authentication;
+
+    final idToken = googleAuthentication.idToken;
+
+    if (idToken == null) {
+      throw Exception(
+        'Google authentication token is missing. Please try again.',
+      );
+    }
+
+    final credential = GoogleAuthProvider.credential(
+      idToken: idToken,
+    );
+
+    return _firebaseAuth.signInWithCredential(credential);
+  }
+
+  Future<void> signOutFromMyMoney() async {
+    await _firebaseAuth.signOut();
+    await _googleSignIn.signOut();
+
+    _currentUser = null;
   }
 
   Future<AuthClient> getAuthenticatedClient({
@@ -98,8 +130,6 @@ class GoogleDriveAuth {
   }
 
   Future<void> signOut() async {
-    await initialize();
-
     await _googleSignIn.signOut();
 
     _currentUser = null;
