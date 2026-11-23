@@ -1,5 +1,5 @@
 
- // ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 
@@ -54,6 +54,17 @@ class _HomePageState extends State<HomePage> {
     _scaffoldKey.currentState?.openDrawer();
   }
 
+  void _handleBack() {
+    if (selectedIndex != 0) {
+      setState(() {
+        selectedIndex = 0;
+      });
+    } else {
+      // Allow normal Android back behavior on Accounts.
+      Navigator.of(context).maybePop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pageTitles = [
@@ -67,178 +78,166 @@ class _HomePageState extends State<HomePage> {
       'Financial Calendar',
     ];
 
-    return Scaffold(
-      key: _scaffoldKey,
+    return PopScope(
+      canPop: selectedIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
 
-      appBar: selectedIndex == 2 ||
-              selectedIndex == 4 ||
-              selectedIndex == 5 ||
-              selectedIndex == 6 ||
-              selectedIndex == 7
-          ? null
-          : AppBar(
-              backgroundColor: primary,
-              foregroundColor: Colors.white,
-              centerTitle: true,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(30),
-                ),
-              ),
-              title: Text(
-                pageTitles[selectedIndex],
-                style: const TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+        if (selectedIndex != 0) {
+          _handleBack();
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
 
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                color: primary,
-              ),
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Text(
-                  'MyMoney',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
+        appBar: selectedIndex == 2 ||
+                selectedIndex == 4 ||
+                selectedIndex == 5 ||
+                selectedIndex == 6 ||
+                selectedIndex == 7
+            ? null
+            : AppBar(
+                backgroundColor: primary,
+                foregroundColor: Colors.white,
+                centerTitle: true,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(30),
+                  ),
+                ),
+                title: Text(
+                  pageTitles[selectedIndex],
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-            ),
 
-            ListTile(
-              leading: const Icon(
-                Icons.account_balance_wallet_outlined,
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              const DrawerHeader(
+                decoration: BoxDecoration(
+                  color: primary,
+                ),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    'MyMoney',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
-              title: const Text('Accounts'),
-              selected: selectedIndex == 0,
-              onTap: () => selectPage(0),
-            ),
 
-            ListTile(
-              leading: const Icon(
-                Icons.receipt_long_outlined,
+              ListTile(
+                leading: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                ),
+                title: const Text('Accounts'),
+                selected: selectedIndex == 0,
+                onTap: () => selectPage(0),
               ),
-              title: const Text('Transactions'),
-              selected: selectedIndex == 1,
-              onTap: () => selectPage(1),
-            ),
 
-            const Divider(),
-
-            ListTile(
-              leading: const Icon(
-                Icons.category_outlined,
+              ListTile(
+                leading: const Icon(
+                  Icons.receipt_long_outlined,
+                ),
+                title: const Text('Transactions'),
+                selected: selectedIndex == 1,
+                onTap: () => selectPage(1),
               ),
-              title: const Text('Categories & Stores'),
-              selected: selectedIndex == 2,
-              onTap: () => selectPage(2),
-            ),
 
-            ListTile(
-              leading: const Icon(
-                Icons.receipt_outlined,
+              const Divider(),
+
+              ListTile(
+                leading: const Icon(Icons.category_outlined),
+                title: const Text('Categories & Stores'),
+                selected: selectedIndex == 2,
+                onTap: () => selectPage(2),
               ),
-              title: const Text('Due Management'),
-              selected: selectedIndex == 3,
-              onTap: () => selectPage(3),
-            ),
 
-            ListTile(
-              leading: const Icon(
-                Icons.swap_horiz_rounded,
+              ListTile(
+                leading: const Icon(Icons.receipt_outlined),
+                title: const Text('Due Management'),
+                selected: selectedIndex == 3,
+                onTap: () => selectPage(3),
               ),
-              title: const Text('Borrow & Lend'),
-              selected: selectedIndex == 4,
-              onTap: () => selectPage(4),
-            ),
 
-            const Divider(),
-
-            ListTile(
-              leading: const Icon(
-                Icons.cloud_sync_outlined,
+              ListTile(
+                leading: const Icon(Icons.swap_horiz_rounded),
+                title: const Text('Borrow & Lend'),
+                selected: selectedIndex == 4,
+                onTap: () => selectPage(4),
               ),
-              title: const Text('Backup & Restore'),
-              selected: selectedIndex == 5,
-              onTap: () => selectPage(5),
-            ),
 
-            ListTile(
-              leading: const Icon(
-                Icons.analytics_outlined,
-              ),
-              title: const Text('Financial Reports'),
-              selected: selectedIndex == 6,
-              onTap: () => selectPage(6),
-            ),
+              const Divider(),
 
-            ListTile(
-              leading: const Icon(
-                Icons.calendar_month_outlined,
+              ListTile(
+                leading: const Icon(Icons.cloud_sync_outlined),
+                title: const Text('Backup & Restore'),
+                selected: selectedIndex == 5,
+                onTap: () => selectPage(5),
               ),
-              title: const Text('Financial Calendar'),
-              selected: selectedIndex == 7,
-              onTap: () => selectPage(7),
+
+              ListTile(
+                leading: const Icon(Icons.analytics_outlined),
+                title: const Text('Financial Reports'),
+                selected: selectedIndex == 6,
+                onTap: () => selectPage(6),
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.calendar_month_outlined),
+                title: const Text('Financial Calendar'),
+                selected: selectedIndex == 7,
+                onTap: () => selectPage(7),
+              ),
+            ],
+          ),
+        ),
+
+        body: IndexedStack(
+          index: selectedIndex,
+          children: [
+            const AccountsPage(),
+            const TransactionsPage(),
+            CategoriesPage(onMenuPressed: _openDrawer),
+            const DuesPage(),
+            BorrowLendPage(onMenuPressed: _openDrawer),
+            BackupPage(onMenuPressed: _openDrawer),
+            ReportsPage(onMenuPressed: _openDrawer),
+            FinancialCalendarPage(onMenuPressed: _openDrawer),
+          ],
+        ),
+
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: selectedIndex < 2 ? selectedIndex : 0,
+          onDestinationSelected: (index) {
+            setState(() {
+              selectedIndex = index;
+            });
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet),
+              label: 'Accounts',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: 'Transactions',
             ),
           ],
         ),
-      ),
-
-      body: IndexedStack(
-        index: selectedIndex,
-        children: [
-          const AccountsPage(),
-          const TransactionsPage(),
-          CategoriesPage(onMenuPressed: _openDrawer),
-          const DuesPage(),
-          BorrowLendPage(onMenuPressed: _openDrawer),
-          BackupPage(onMenuPressed: _openDrawer),
-          ReportsPage(onMenuPressed: _openDrawer),
-          FinancialCalendarPage(onMenuPressed: _openDrawer),
-        ],
-      ),
-
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex < 2
-            ? selectedIndex
-            : 0,
-        onDestinationSelected: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(
-              Icons.account_balance_wallet_outlined,
-            ),
-            selectedIcon: Icon(
-              Icons.account_balance_wallet,
-            ),
-            label: 'Accounts',
-          ),
-          NavigationDestination(
-            icon: Icon(
-              Icons.receipt_long_outlined,
-            ),
-            selectedIcon: Icon(
-              Icons.receipt_long,
-            ),
-            label: 'Transactions',
-          ),
-        ],
       ),
     );
   }
