@@ -26,7 +26,7 @@ class GoogleDriveAuth {
 
     await _googleSignIn.initialize(
       serverClientId:
-          '638051983034-j3u7p36qtrdcfgfpc77i286v94j2mkjs.apps.googleusercontent.com',
+          '644177906676-4igsl2m9kuhgirq1iarpnfk23uuftn0b.apps.googleusercontent.com',
     );
 
     _initialized = true;
