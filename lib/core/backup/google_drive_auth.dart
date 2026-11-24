@@ -24,8 +24,10 @@ class GoogleDriveAuth {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    // Android reads the Web Client ID from google-services.json.
-    await _googleSignIn.initialize();
+    await _googleSignIn.initialize(
+      serverClientId:
+          '638051983034-j3u7p36qtrdcfgfpc77i286v94j2mkjs.apps.googleusercontent.com',
+    );
 
     _initialized = true;
   }
