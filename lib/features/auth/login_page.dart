@@ -54,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 Image.asset(
                   'assets/mymoney_logo.png',
-                  width: 220,
+                  width: 500,
                   fit: BoxFit.contain,
                 ),
 
