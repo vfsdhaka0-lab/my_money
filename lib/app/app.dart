@@ -1,9 +1,10 @@
 
- // ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../core/backup/google_drive_auth.dart';
 import '../features/auth/login_page.dart';
 import '../features/accounts/accounts_page.dart';
 import '../features/transactions/transactions_page.dart';
@@ -103,6 +104,7 @@ class _HomePageState extends State<HomePage> {
       'Backup & Restore',
       'Financial Reports',
       'Financial Calendar',
+      'My Account',
     ];
 
     return PopScope(
@@ -227,6 +229,15 @@ class _HomePageState extends State<HomePage> {
                 selected: selectedIndex == 7,
                 onTap: () => selectPage(7),
               ),
+
+              const Divider(),
+
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: const Text('My Account'),
+                selected: selectedIndex == 8,
+                onTap: () => selectPage(8),
+              ),
             ],
           ),
         ),
@@ -242,6 +253,7 @@ class _HomePageState extends State<HomePage> {
             BackupPage(onMenuPressed: _openDrawer),
             ReportsPage(onMenuPressed: _openDrawer),
             FinancialCalendarPage(onMenuPressed: _openDrawer),
+            const MyAccountPage(),
           ],
         ),
 
@@ -265,6 +277,185 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class MyAccountPage extends StatelessWidget {
+  const MyAccountPage({super.key});
+
+  static const Color primary = Color(0xFF4FA38D);
+
+  Future<void> _signOut(BuildContext context) async {
+    final shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Sign Out?'),
+          content: const Text(
+            'Are you sure you want to sign out of MyMoney?\n\n'
+            'Your accounts, transactions and other financial '
+            'records will remain saved on this device. '
+            'Your Google Drive backups will not be deleted.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: primary,
+              ),
+              child: const Text('Sign Out'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSignOut != true) return;
+
+    try {
+      await GoogleDriveAuth.instance.signOutFromMyMoney();
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign out failed: $e'),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const SizedBox(height: 25),
+
+          CircleAvatar(
+            radius: 55,
+            backgroundColor: primary.withValues(alpha: 0.15),
+            backgroundImage: user?.photoURL != null
+                ? NetworkImage(user!.photoURL!)
+                : null,
+            child: user?.photoURL == null
+                ? const Icon(
+                    Icons.person,
+                    size: 60,
+                    color: primary,
+                  )
+                : null,
+          ),
+
+          const SizedBox(height: 18),
+
+          Text(
+            user?.displayName ?? 'MyMoney User',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 7),
+
+          Text(
+            user?.email ?? 'No email available',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.grey.shade600,
+            ),
+          ),
+
+          const SizedBox(height: 35),
+
+          Card(
+            elevation: 0,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.verified_user_outlined,
+                        color: primary,
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Google account connected',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.check_circle,
+                        color: primary,
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 30),
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.cloud_done_outlined,
+                        color: primary,
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Google Drive backup available',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: user == null
+                  ? null
+                  : () => _signOut(context),
+              icon: const Icon(Icons.logout),
+              label: const Text('Sign Out'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 15,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
