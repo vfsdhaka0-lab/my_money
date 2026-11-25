@@ -54,11 +54,11 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 Image.asset(
                   'assets/mymoney_logo.png',
-                  width: 1200,
+                  width: 700,
                   fit: BoxFit.contain,
                 ),
 
-                const SizedBox(height: 55),
+                const SizedBox(height: 30),
 
                 SizedBox(
                   width: double.infinity,
