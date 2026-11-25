@@ -58,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
                   fit: BoxFit.contain,
                 ),
 
-                const SizedBox(height: 55),
+                const SizedBox(height: 30),
 
                 SizedBox(
                   width: double.infinity,
