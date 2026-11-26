@@ -121,9 +121,8 @@ class _ReportsPageState extends State<ReportsPage> {
   String _pdfMoney(int paisa) {
     final absoluteAmount = paisa.abs();
     final taka = absoluteAmount ~/ 100;
-    final remainder = (absoluteAmount % 100)
-        .toString()
-        .padLeft(2, '0');
+    final remainder =
+        (absoluteAmount % 100).toString().padLeft(2, '0');
 
     final sign = paisa < 0 ? '-' : '';
 
@@ -205,8 +204,21 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
+  // TOTAL BALANCE ADJUSTMENTS IN THE SELECTED REPORT PERIOD.
+  int _totalBalanceAdjustments(List accountAdjustments) {
+    var total = 0;
+
+    for (final adjustment in accountAdjustments) {
+      if (_isInSelectedRange(adjustment.date)) {
+        total += adjustment.amountPaisa as int;
+      }
+    }
+
+    return total;
+  }
+
   // CALCULATE ACCOUNT BALANCE.
-  // Uses the same balance rules as the Accounts page.
+  // Includes all historical balance adjustments.
   int _accountBalance({
     required dynamic account,
     required List transactions,
@@ -214,6 +226,7 @@ class _ReportsPageState extends State<ReportsPage> {
     required List transfers,
     required List borrowLends,
     required List borrowLendPayments,
+    required List accountAdjustments,
   }) {
     var balance = account.openingBalancePaisa as int;
 
@@ -281,6 +294,13 @@ class _ReportsPageState extends State<ReportsPage> {
         balance -= payment.amountPaisa as int;
       } else if (record.type == 'lend') {
         balance += payment.amountPaisa as int;
+      }
+    }
+
+    // Balance adjustments.
+    for (final adjustment in accountAdjustments) {
+      if (adjustment.accountId == account.id) {
+        balance += adjustment.amountPaisa as int;
       }
     }
 
@@ -375,7 +395,6 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   // STORE-WISE TOTAL DUE PAYMENTS.
-  // Uses payment dates within the selected report period.
   Map<String, int> _storeWiseDueTotals({
     required List duePayments,
     required List dues,
@@ -408,7 +427,6 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   // PERSON-WISE TOTAL BORROW AND LEND.
-  // Only fully completed records created within the selected period.
   Map<String, int> _personWiseCompletedTotals({
     required List borrowLends,
     required List borrowLendPayments,
@@ -435,7 +453,6 @@ class _ReportsPageState extends State<ReportsPage> {
       final originalAmount = record.amountPaisa as int;
       final totalPaid = paymentsByRecord[record.id] ?? 0;
 
-      // Only fully paid records.
       if (totalPaid < originalAmount) {
         continue;
       }
@@ -552,7 +569,6 @@ class _ReportsPageState extends State<ReportsPage> {
       children: [
         _sectionTitle('Payment History'),
 
-        // Payment type filters.
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -715,11 +731,10 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   // EXPORT FINANCIAL REPORT AS PDF.
-  // Account Balance Summary first.
-  // Payment History last.
   Future<void> _exportPdf({
     required int totalIncome,
     required int totalExpense,
+    required int totalAdjustments,
     required List sortedCategories,
     required Map<int, String> categoryNames,
     required List visibleMonths,
@@ -731,6 +746,7 @@ class _ReportsPageState extends State<ReportsPage> {
     required List transfers,
     required List borrowLends,
     required List borrowLendPayments,
+    required List accountAdjustments,
   }) async {
     final document = pw.Document();
 
@@ -744,6 +760,7 @@ class _ReportsPageState extends State<ReportsPage> {
         transfers: transfers,
         borrowLends: borrowLends,
         borrowLendPayments: borrowLendPayments,
+        accountAdjustments: accountAdjustments,
       );
 
       return [
@@ -813,9 +830,7 @@ class _ReportsPageState extends State<ReportsPage> {
           pw.SizedBox(height: 4),
           pw.Text(
             'Financial Report',
-            style: const pw.TextStyle(
-              fontSize: 17,
-            ),
+            style: const pw.TextStyle(fontSize: 17),
           ),
           pw.SizedBox(height: 8),
           pw.Text(
@@ -848,7 +863,7 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             ),
 
-          // 2. INCOME & EXPENSES.
+          // 2. INCOME, EXPENSES AND BALANCE ADJUSTMENTS.
           pw.SizedBox(height: 24),
           pw.Text(
             'Income & Expenses',
@@ -865,6 +880,10 @@ class _ReportsPageState extends State<ReportsPage> {
               ['Total Income', _pdfMoney(totalIncome)],
               ['Total Expenses', _pdfMoney(totalExpense)],
               ['Net Income', _pdfMoney(netIncome)],
+              [
+                'Balance Adjustments',
+                _pdfMoney(totalAdjustments),
+              ],
             ],
             headerStyle: pw.TextStyle(
               fontWeight: pw.FontWeight.bold,
@@ -1051,9 +1070,7 @@ class _ReportsPageState extends State<ReportsPage> {
               headerStyle: pw.TextStyle(
                 fontWeight: pw.FontWeight.bold,
               ),
-              cellStyle: const pw.TextStyle(
-                fontSize: 8,
-              ),
+              cellStyle: const pw.TextStyle(fontSize: 8),
               headerDecoration: pw.BoxDecoration(
                 color: PdfColors.grey300,
               ),
@@ -1089,10 +1106,14 @@ class _ReportsPageState extends State<ReportsPage> {
     required List transfers,
     required List borrowLends,
     required List borrowLendPayments,
+    required List accountAdjustments,
     required List expenseCategories,
   }) {
     int totalIncome = 0;
     int totalExpense = 0;
+
+    final totalAdjustments =
+        _totalBalanceAdjustments(accountAdjustments);
 
     final Map<int, int> categoryTotals = {};
     final Map<int, String> categoryNames = {};
@@ -1167,7 +1188,6 @@ class _ReportsPageState extends State<ReportsPage> {
     }
 
     // Later payments for store dues.
-    // Attributed to the original purchase category.
     for (final payment in duePayments) {
       if (!_isInSelectedRange(payment.date)) {
         continue;
@@ -1203,6 +1223,8 @@ class _ReportsPageState extends State<ReportsPage> {
       }
     }
 
+    // Balance adjustments are deliberately NOT included
+    // in income, expenses, monthly totals or net income.
     final netBalance = totalIncome - totalExpense;
 
     final sortedCategories = categoryTotals.entries.toList()
@@ -1231,7 +1253,7 @@ class _ReportsPageState extends State<ReportsPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
       children: [
-        // Date filter.
+        // DATE FILTER.
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -1353,7 +1375,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
         const SizedBox(height: 12),
 
-        // Export PDF button.
+        // EXPORT PDF BUTTON.
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
@@ -1362,6 +1384,7 @@ class _ReportsPageState extends State<ReportsPage> {
                 await _exportPdf(
                   totalIncome: totalIncome,
                   totalExpense: totalExpense,
+                  totalAdjustments: totalAdjustments,
                   sortedCategories: sortedCategories,
                   categoryNames: categoryNames,
                   visibleMonths: visibleMonths,
@@ -1373,6 +1396,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   transfers: transfers,
                   borrowLends: borrowLends,
                   borrowLendPayments: borrowLendPayments,
+                  accountAdjustments: accountAdjustments,
                 );
               } catch (error) {
                 if (!mounted) return;
@@ -1396,6 +1420,7 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
         ),
 
+        // INCOME AND EXPENSES.
         _sectionTitle('Income & Expenses'),
 
         Row(
@@ -1451,7 +1476,57 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
         ),
 
-        // Expense categories.
+        // BALANCE ADJUSTMENTS.
+        _sectionTitle('Balance Adjustments'),
+
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: primary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: primary.withOpacity(0.20),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.tune_rounded,
+                  color: primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Total Balance Adjustments',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                formatMoney(totalAdjustments),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: totalAdjustments > 0
+                      ? Colors.green
+                      : totalAdjustments < 0
+                          ? Colors.red
+                          : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // EXPENSE CATEGORIES.
         _sectionTitle('Expense by Category'),
 
         if (sortedCategories.isEmpty)
@@ -1515,7 +1590,7 @@ class _ReportsPageState extends State<ReportsPage> {
             );
           }),
 
-        // Monthly trend.
+        // MONTHLY TREND.
         _sectionTitle('Monthly Income & Expenses'),
 
         if (visibleMonths.isEmpty)
@@ -1584,7 +1659,7 @@ class _ReportsPageState extends State<ReportsPage> {
             ),
           ),
 
-        // Account balances.
+        // ACCOUNT BALANCES.
         _sectionTitle('Account Balance Summary'),
 
         if (accounts.isEmpty)
@@ -1598,6 +1673,7 @@ class _ReportsPageState extends State<ReportsPage> {
               transfers: transfers,
               borrowLends: borrowLends,
               borrowLendPayments: borrowLendPayments,
+              accountAdjustments: accountAdjustments,
             );
 
             return Container(
@@ -1645,7 +1721,7 @@ class _ReportsPageState extends State<ReportsPage> {
             );
           }),
 
-        // Store-wise total due payments.
+        // STORE-WISE TOTAL DUE PAYMENTS.
         _buildGroupedTotals(
           title: 'Store-wise Total Due Payments',
           totals: _storeWiseDueTotals(
@@ -1656,7 +1732,7 @@ class _ReportsPageState extends State<ReportsPage> {
           color: Colors.red,
         ),
 
-        // Completed borrow repayments by person.
+        // COMPLETED BORROW REPAYMENTS BY PERSON.
         _buildGroupedTotals(
           title: 'Total Borrow — Person Wise',
           totals: _personWiseCompletedTotals(
@@ -1670,7 +1746,7 @@ class _ReportsPageState extends State<ReportsPage> {
               'No completed borrow payments in this period.',
         ),
 
-        // Completed lend repayments by person.
+        // COMPLETED LEND REPAYMENTS BY PERSON.
         _buildGroupedTotals(
           title: 'Total Lend — Person Wise',
           totals: _personWiseCompletedTotals(
@@ -1684,7 +1760,7 @@ class _ReportsPageState extends State<ReportsPage> {
               'No completed lend payments in this period.',
         ),
 
-        // Completed payment history.
+        // COMPLETED PAYMENT HISTORY.
         _buildPaymentHistory(
           accounts: accounts,
           duePayments: duePayments,
@@ -1855,34 +1931,51 @@ class _ReportsPageState extends State<ReportsPage> {
                                   }
 
                                   return StreamBuilder(
-                                    stream: database.watchCategories(
-                                      type: 'Expense',
-                                    ),
+                                    stream: database
+                                        .watchAllAccountAdjustments(),
                                     builder: (
                                       context,
-                                      categorySnapshot,
+                                      adjustmentSnapshot,
                                     ) {
-                                      if (!categorySnapshot.hasData) {
+                                      if (!adjustmentSnapshot.hasData) {
                                         return const Center(
                                           child: CircularProgressIndicator(),
                                         );
                                       }
 
-                                      return _buildReportContent(
-                                        accounts: accountSnapshot.data!,
-                                        transactions:
-                                            transactionSnapshot.data!,
-                                        duePayments:
-                                            paymentSnapshot.data!,
-                                        dues: dueSnapshot.data!,
-                                        transfers:
-                                            transferSnapshot.data!,
-                                        borrowLends:
-                                            borrowSnapshot.data!,
-                                        borrowLendPayments:
-                                            borrowPaymentSnapshot.data!,
-                                        expenseCategories:
-                                            categorySnapshot.data!,
+                                      return StreamBuilder(
+                                        stream: database.watchCategories(
+                                          type: 'Expense',
+                                        ),
+                                        builder: (
+                                          context,
+                                          categorySnapshot,
+                                        ) {
+                                          if (!categorySnapshot.hasData) {
+                                            return const Center(
+                                              child: CircularProgressIndicator(),
+                                            );
+                                          }
+
+                                          return _buildReportContent(
+                                            accounts: accountSnapshot.data!,
+                                            transactions:
+                                                transactionSnapshot.data!,
+                                            duePayments:
+                                                paymentSnapshot.data!,
+                                            dues: dueSnapshot.data!,
+                                            transfers:
+                                                transferSnapshot.data!,
+                                            borrowLends:
+                                                borrowSnapshot.data!,
+                                            borrowLendPayments:
+                                                borrowPaymentSnapshot.data!,
+                                            accountAdjustments:
+                                                adjustmentSnapshot.data!,
+                                            expenseCategories:
+                                                categorySnapshot.data!,
+                                          );
+                                        },
                                       );
                                     },
                                   );
