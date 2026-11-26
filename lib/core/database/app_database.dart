@@ -77,6 +77,7 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(borrowLends);
             await m.createTable(borrowLendPayments);
           }
+
           if (from < 7) {
             await m.createTable(accountAdjustments);
           }
@@ -87,7 +88,7 @@ class AppDatabase extends _$AppDatabase {
   //
   // Only accounts whose name contains "bank" can go negative.
   // All other accounts must have enough balance before an
-  // outgoing payment or transfer can be saved.
+  // outgoing payment, transfer, or negative adjustment.
   Future<void> _checkAccountBalance({
     required int accountId,
     required int outgoingAmountPaisa,
@@ -179,12 +180,22 @@ class AppDatabase extends _$AppDatabase {
       if (record == null) continue;
 
       if (record.type == 'borrow') {
-        // Repaying borrowed money reduces this account.
         currentBalance -= payment.amountPaisa;
       } else if (record.type == 'lend') {
-        // Receiving a lent-money repayment increases this account.
         currentBalance += payment.amountPaisa;
       }
+    }
+
+    // Include previous account balance adjustments.
+    final accountAdjustmentsList =
+        await (select(accountAdjustments)
+              ..where(
+                (item) => item.accountId.equals(accountId),
+              ))
+            .get();
+
+    for (final adjustment in accountAdjustmentsList) {
+      currentBalance += adjustment.amountPaisa;
     }
 
     if (currentBalance < outgoingAmountPaisa) {
@@ -210,6 +221,76 @@ class AppDatabase extends _$AppDatabase {
         openingBalancePaisa: Value(openingBalancePaisa),
       ),
     );
+  }
+
+  // ACCOUNT ADJUSTMENTS
+
+  // Watch adjustment history for one account.
+  Stream<List<AccountAdjustment>> watchAccountAdjustments(
+    int accountId,
+  ) {
+    return (select(accountAdjustments)
+          ..where((item) => item.accountId.equals(accountId))
+          ..orderBy([
+            (item) => OrderingTerm.desc(item.date),
+            (item) => OrderingTerm.desc(item.createdAt),
+          ]))
+        .watch();
+  }
+
+  // Watch all account adjustments.
+  Stream<List<AccountAdjustment>> watchAllAccountAdjustments() {
+    return (select(accountAdjustments)
+          ..orderBy([
+            (item) => OrderingTerm.desc(item.date),
+            (item) => OrderingTerm.desc(item.createdAt),
+          ]))
+        .watch();
+  }
+
+  // Save a balance adjustment.
+  //
+  // Positive amount increases the account balance.
+  // Negative amount decreases the account balance.
+  Future<int> addAccountAdjustment({
+    required int accountId,
+    required int amountPaisa,
+    required String reason,
+    required DateTime date,
+  }) async {
+    if (amountPaisa == 0 || reason.trim().isEmpty) {
+      throw ArgumentError(
+        'Enter a non-zero adjustment and a reason.',
+      );
+    }
+
+    return transaction(() async {
+      final account = await (select(accounts)
+            ..where((a) => a.id.equals(accountId)))
+          .getSingleOrNull();
+
+      if (account == null) {
+        throw StateError('Account not found.');
+      }
+
+      // A negative adjustment is an outgoing balance change.
+      // Cash and bKash cannot become negative.
+      if (amountPaisa < 0) {
+        await _checkAccountBalance(
+          accountId: accountId,
+          outgoingAmountPaisa: -amountPaisa,
+        );
+      }
+
+      return into(accountAdjustments).insert(
+        AccountAdjustmentsCompanion.insert(
+          accountId: accountId,
+          amountPaisa: amountPaisa,
+          reason: reason.trim(),
+          date: date,
+        ),
+      );
+    });
   }
 
   // DELETE ACCOUNT ONLY WHEN UNUSED
@@ -265,6 +346,15 @@ class AppDatabase extends _$AppDatabase {
         return false;
       }
 
+      // Accounts with adjustment history cannot be deleted.
+      final linkedAdjustments = await (select(accountAdjustments)
+            ..where((item) => item.accountId.equals(accountId)))
+          .get();
+
+      if (linkedAdjustments.isNotEmpty) {
+        return false;
+      }
+
       await (delete(accounts)
             ..where((a) => a.id.equals(accountId)))
           .go();
@@ -307,9 +397,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // SOFT DELETE CATEGORY — PRESERVE FINANCIAL HISTORY
-  //
-  // The category is marked inactive instead of being permanently
-  // deleted. Existing transactions keep their category reference.
   Future<void> deleteCategory(int categoryId) async {
     await (update(categories)
           ..where((c) => c.id.equals(categoryId)))
@@ -348,12 +435,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // DELETE STORE — PRESERVE PURCHASE AND DUE HISTORY
-  //
-  // The store entry is deleted, but existing purchase and due
-  // records are not modified.
-  //
-  // Returns the image path so the page can delete the image file
-  // separately after successful deletion.
   Future<String?> deleteStore(int storeId) async {
     return transaction(() async {
       final store = await (select(stores)
@@ -492,7 +573,6 @@ class AppDatabase extends _$AppDatabase {
 
   // TRANSFERS
 
-  // Watch all transfers, newest first.
   Stream<List<Transfer>> watchTransfers() {
     return (select(transfers)
           ..orderBy([
@@ -502,11 +582,6 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  // ADD TRANSFER BETWEEN TWO ACCOUNTS.
-  //
-  // A transfer is stored separately from income and expenses.
-  // It reduces the source account and increases the destination
-  // account without changing the total balance.
   Future<int> addTransfer({
     required int fromAccountId,
     required int toAccountId,
@@ -555,7 +630,6 @@ class AppDatabase extends _$AppDatabase {
 
   // BORROW & LEND
 
-  // Watch all borrow and lend records, newest first.
   Stream<List<BorrowLend>> watchBorrowLends() {
     return (select(borrowLends)
           ..orderBy([
@@ -565,7 +639,6 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  // Watch repayments for one borrow/lend record.
   Stream<List<BorrowLendPayment>> watchBorrowLendPayments(
     int borrowLendId,
   ) {
@@ -580,7 +653,6 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  // Watch all borrow/lend repayments.
   Stream<List<BorrowLendPayment>> watchAllBorrowLendPayments() {
     return (select(borrowLendPayments)
           ..orderBy([
@@ -589,7 +661,6 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  // Add a new borrowing or lending record.
   Future<int> addBorrowLend({
     required String type,
     required String personName,
@@ -615,7 +686,6 @@ class AppDatabase extends _$AppDatabase {
         throw StateError('Account not found.');
       }
 
-      // Lending means money leaves your account.
       if (type == 'lend') {
         await _checkAccountBalance(
           accountId: accountId,
@@ -636,7 +706,6 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  // Calculate the remaining amount.
   Future<int> getOutstandingBorrowLend(
     int borrowLendId,
   ) async {
@@ -663,7 +732,6 @@ class AppDatabase extends _$AppDatabase {
     return record.amountPaisa - totalPaid;
   }
 
-  // Add a partial or full repayment.
   Future<void> addBorrowLendPayment({
     required int borrowLendId,
     required int accountId,
@@ -701,7 +769,6 @@ class AppDatabase extends _$AppDatabase {
         throw StateError('Account not found.');
       }
 
-      // Repaying borrowed money means money leaves your account.
       if (record.type == 'borrow') {
         await _checkAccountBalance(
           accountId: accountId,
@@ -749,12 +816,10 @@ class AppDatabase extends _$AppDatabase {
         (total, payment) => total + payment.amountPaisa,
       );
 
-      // Only exactly completed records can be deleted.
       if (totalPaid != record.amountPaisa) {
         return false;
       }
 
-      // Calculate the balance effect for each account.
       final adjustments = <int, int>{};
 
       void addAdjustment(int accountId, int amount) {
@@ -762,7 +827,6 @@ class AppDatabase extends _$AppDatabase {
             (adjustments[accountId] ?? 0) + amount;
       }
 
-      // Preserve the original Borrow or Lend amount.
       if (record.type == 'borrow') {
         addAdjustment(
           record.accountId,
@@ -777,16 +841,13 @@ class AppDatabase extends _$AppDatabase {
         throw StateError('Invalid borrow/lend record type.');
       }
 
-      // Preserve the effect of every repayment.
       for (final payment in payments) {
         if (record.type == 'borrow') {
-          // Borrow repayment reduces the repayment account.
           addAdjustment(
             payment.accountId,
             -payment.amountPaisa,
           );
         } else {
-          // Lend repayment increases the repayment account.
           addAdjustment(
             payment.accountId,
             payment.amountPaisa,
@@ -794,8 +855,6 @@ class AppDatabase extends _$AppDatabase {
         }
       }
 
-      // Move the deleted balance effects into each account's
-      // opening-balance baseline.
       for (final entry in adjustments.entries) {
         if (entry.value == 0) continue;
 
@@ -818,7 +877,6 @@ class AppDatabase extends _$AppDatabase {
         );
       }
 
-      // Delete repayment history.
       await (delete(borrowLendPayments)
             ..where(
               (payment) =>
@@ -826,7 +884,6 @@ class AppDatabase extends _$AppDatabase {
             ))
           .go();
 
-      // Delete the completed record.
       await (delete(borrowLends)
             ..where((item) => item.id.equals(borrowLendId)))
           .go();
