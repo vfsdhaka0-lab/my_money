@@ -8,6 +8,8 @@ import '../../core/database/app_database.dart';
 import '../../core/utils/money_formatter.dart';
 import 'new_transfer_page.dart';
 import 'transfer_history_page.dart';
+import 'account_reconciliation_page.dart';
+import 'account_adjustment_history_page.dart';
 
 class AccountsPage extends StatelessWidget {
   const AccountsPage({super.key});
@@ -236,7 +238,7 @@ class AccountsPage extends StatelessWidget {
       (total, transfer) => total + transfer.amountPaisa,
     );
 
-    // Original borrowing and lending amounts.
+    // ORIGINAL BORROWING AND LENDING AMOUNTS
 
     final borrowedAmount = borrowLends
         .where(
@@ -260,7 +262,7 @@ class AccountsPage extends StatelessWidget {
       (total, item) => total + item.amountPaisa,
     );
 
-    // Repayments made for borrowed money.
+    // REPAYMENTS MADE FOR BORROWED MONEY
 
     final borrowedRepayments = borrowLendPayments
         .where((payment) => payment.accountId == account.id)
@@ -276,7 +278,7 @@ class AccountsPage extends StatelessWidget {
       (total, payment) => total + payment.amountPaisa,
     );
 
-    // Repayments received for lent money.
+    // REPAYMENTS RECEIVED FOR LENT MONEY
 
     final lentRepayments = borrowLendPayments
         .where((payment) => payment.accountId == account.id)
@@ -292,7 +294,7 @@ class AccountsPage extends StatelessWidget {
       (total, payment) => total + payment.amountPaisa,
     );
 
-    // Include account balance adjustments.
+    // ACCOUNT BALANCE ADJUSTMENTS
 
     final totalAdjustments = accountAdjustments
         .where((item) => item.accountId == account.id)
@@ -354,6 +356,71 @@ class AccountsPage extends StatelessWidget {
     }
 
     return primary;
+  }
+
+  // ACCOUNT ACTION MENU
+
+  Widget accountActionMenu(
+    BuildContext context,
+    Account account,
+    int balance,
+  ) {
+    return PopupMenuButton<String>(
+      icon: const Icon(
+        Icons.more_vert,
+        color: darkText,
+      ),
+      onSelected: (value) {
+        if (value == 'reconcile') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AccountReconciliationPage(
+                account: account,
+                currentBalancePaisa: balance,
+              ),
+            ),
+          );
+        } else if (value == 'history') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AccountAdjustmentHistoryPage(
+                account: account,
+              ),
+            ),
+          );
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: 'reconcile',
+          child: Row(
+            children: [
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                color: primary,
+              ),
+              SizedBox(width: 10),
+              Text('Reconcile Balance'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'history',
+          child: Row(
+            children: [
+              Icon(
+                Icons.history,
+                color: primary,
+              ),
+              SizedBox(width: 10),
+              Text('Adjustment History'),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -724,14 +791,25 @@ class AccountsPage extends StatelessWidget {
                                                       FontWeight.w500,
                                                 ),
                                               ),
-                                              trailing: Text(
-                                                formatMoney(balance),
-                                                style: const TextStyle(
-                                                  fontSize: 17,
-                                                  color: darkText,
-                                                  fontWeight:
-                                                      FontWeight.w500,
-                                                ),
+                                              trailing: Row(
+                                                mainAxisSize:
+                                                    MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    formatMoney(balance),
+                                                    style: const TextStyle(
+                                                      fontSize: 17,
+                                                      color: darkText,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  accountActionMenu(
+                                                    context,
+                                                    account,
+                                                    balance,
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ),
