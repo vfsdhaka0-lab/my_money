@@ -1,5 +1,5 @@
 
-// ignore_for_file: deprecated_member_use
+ // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -209,12 +209,7 @@ class _HomePageState extends State<HomePage> {
 
               const Divider(),
 
-              ListTile(
-                leading: const Icon(Icons.cloud_sync_outlined),
-                title: const Text('Backup & Restore'),
-                selected: selectedIndex == 5,
-                onTap: () => selectPage(5),
-              ),
+              // FINANCIAL SECTION - NEW ORDER
 
               ListTile(
                 leading: const Icon(Icons.analytics_outlined),
@@ -228,6 +223,13 @@ class _HomePageState extends State<HomePage> {
                 title: const Text('Financial Calendar'),
                 selected: selectedIndex == 7,
                 onTap: () => selectPage(7),
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.cloud_sync_outlined),
+                title: const Text('Backup & Restore'),
+                selected: selectedIndex == 5,
+                onTap: () => selectPage(5),
               ),
 
               const Divider(),
