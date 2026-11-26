@@ -3993,6 +3993,406 @@ class BorrowLendPaymentsCompanion extends UpdateCompanion<BorrowLendPayment> {
   }
 }
 
+class $AccountAdjustmentsTable extends AccountAdjustments
+    with TableInfo<$AccountAdjustmentsTable, AccountAdjustment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AccountAdjustmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<int> accountId = GeneratedColumn<int>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountPaisaMeta = const VerificationMeta(
+    'amountPaisa',
+  );
+  @override
+  late final GeneratedColumn<int> amountPaisa = GeneratedColumn<int>(
+    'amount_paisa',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    accountId,
+    amountPaisa,
+    reason,
+    date,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'account_adjustments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AccountAdjustment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('amount_paisa')) {
+      context.handle(
+        _amountPaisaMeta,
+        amountPaisa.isAcceptableOrUnknown(
+          data['amount_paisa']!,
+          _amountPaisaMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountPaisaMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AccountAdjustment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AccountAdjustment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}account_id'],
+      )!,
+      amountPaisa: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_paisa'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AccountAdjustmentsTable createAlias(String alias) {
+    return $AccountAdjustmentsTable(attachedDatabase, alias);
+  }
+}
+
+class AccountAdjustment extends DataClass
+    implements Insertable<AccountAdjustment> {
+  final int id;
+  final int accountId;
+  final int amountPaisa;
+  final String reason;
+  final DateTime date;
+  final DateTime createdAt;
+  const AccountAdjustment({
+    required this.id,
+    required this.accountId,
+    required this.amountPaisa,
+    required this.reason,
+    required this.date,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['account_id'] = Variable<int>(accountId);
+    map['amount_paisa'] = Variable<int>(amountPaisa);
+    map['reason'] = Variable<String>(reason);
+    map['date'] = Variable<DateTime>(date);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AccountAdjustmentsCompanion toCompanion(bool nullToAbsent) {
+    return AccountAdjustmentsCompanion(
+      id: Value(id),
+      accountId: Value(accountId),
+      amountPaisa: Value(amountPaisa),
+      reason: Value(reason),
+      date: Value(date),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AccountAdjustment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AccountAdjustment(
+      id: serializer.fromJson<int>(json['id']),
+      accountId: serializer.fromJson<int>(json['accountId']),
+      amountPaisa: serializer.fromJson<int>(json['amountPaisa']),
+      reason: serializer.fromJson<String>(json['reason']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'accountId': serializer.toJson<int>(accountId),
+      'amountPaisa': serializer.toJson<int>(amountPaisa),
+      'reason': serializer.toJson<String>(reason),
+      'date': serializer.toJson<DateTime>(date),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AccountAdjustment copyWith({
+    int? id,
+    int? accountId,
+    int? amountPaisa,
+    String? reason,
+    DateTime? date,
+    DateTime? createdAt,
+  }) => AccountAdjustment(
+    id: id ?? this.id,
+    accountId: accountId ?? this.accountId,
+    amountPaisa: amountPaisa ?? this.amountPaisa,
+    reason: reason ?? this.reason,
+    date: date ?? this.date,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  AccountAdjustment copyWithCompanion(AccountAdjustmentsCompanion data) {
+    return AccountAdjustment(
+      id: data.id.present ? data.id.value : this.id,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      amountPaisa: data.amountPaisa.present
+          ? data.amountPaisa.value
+          : this.amountPaisa,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      date: data.date.present ? data.date.value : this.date,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AccountAdjustment(')
+          ..write('id: $id, ')
+          ..write('accountId: $accountId, ')
+          ..write('amountPaisa: $amountPaisa, ')
+          ..write('reason: $reason, ')
+          ..write('date: $date, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, accountId, amountPaisa, reason, date, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AccountAdjustment &&
+          other.id == this.id &&
+          other.accountId == this.accountId &&
+          other.amountPaisa == this.amountPaisa &&
+          other.reason == this.reason &&
+          other.date == this.date &&
+          other.createdAt == this.createdAt);
+}
+
+class AccountAdjustmentsCompanion extends UpdateCompanion<AccountAdjustment> {
+  final Value<int> id;
+  final Value<int> accountId;
+  final Value<int> amountPaisa;
+  final Value<String> reason;
+  final Value<DateTime> date;
+  final Value<DateTime> createdAt;
+  const AccountAdjustmentsCompanion({
+    this.id = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.amountPaisa = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.date = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  AccountAdjustmentsCompanion.insert({
+    this.id = const Value.absent(),
+    required int accountId,
+    required int amountPaisa,
+    required String reason,
+    required DateTime date,
+    this.createdAt = const Value.absent(),
+  }) : accountId = Value(accountId),
+       amountPaisa = Value(amountPaisa),
+       reason = Value(reason),
+       date = Value(date);
+  static Insertable<AccountAdjustment> custom({
+    Expression<int>? id,
+    Expression<int>? accountId,
+    Expression<int>? amountPaisa,
+    Expression<String>? reason,
+    Expression<DateTime>? date,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (accountId != null) 'account_id': accountId,
+      if (amountPaisa != null) 'amount_paisa': amountPaisa,
+      if (reason != null) 'reason': reason,
+      if (date != null) 'date': date,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  AccountAdjustmentsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? accountId,
+    Value<int>? amountPaisa,
+    Value<String>? reason,
+    Value<DateTime>? date,
+    Value<DateTime>? createdAt,
+  }) {
+    return AccountAdjustmentsCompanion(
+      id: id ?? this.id,
+      accountId: accountId ?? this.accountId,
+      amountPaisa: amountPaisa ?? this.amountPaisa,
+      reason: reason ?? this.reason,
+      date: date ?? this.date,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<int>(accountId.value);
+    }
+    if (amountPaisa.present) {
+      map['amount_paisa'] = Variable<int>(amountPaisa.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AccountAdjustmentsCompanion(')
+          ..write('id: $id, ')
+          ..write('accountId: $accountId, ')
+          ..write('amountPaisa: $amountPaisa, ')
+          ..write('reason: $reason, ')
+          ..write('date: $date, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4006,6 +4406,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BorrowLendsTable borrowLends = $BorrowLendsTable(this);
   late final $BorrowLendPaymentsTable borrowLendPayments =
       $BorrowLendPaymentsTable(this);
+  late final $AccountAdjustmentsTable accountAdjustments =
+      $AccountAdjustmentsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4020,6 +4422,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transfers,
     borrowLends,
     borrowLendPayments,
+    accountAdjustments,
   ];
 }
 
@@ -6170,6 +6573,245 @@ typedef $$BorrowLendPaymentsTableProcessedTableManager =
       BorrowLendPayment,
       PrefetchHooks Function()
     >;
+typedef $$AccountAdjustmentsTableCreateCompanionBuilder =
+    AccountAdjustmentsCompanion Function({
+      Value<int> id,
+      required int accountId,
+      required int amountPaisa,
+      required String reason,
+      required DateTime date,
+      Value<DateTime> createdAt,
+    });
+typedef $$AccountAdjustmentsTableUpdateCompanionBuilder =
+    AccountAdjustmentsCompanion Function({
+      Value<int> id,
+      Value<int> accountId,
+      Value<int> amountPaisa,
+      Value<String> reason,
+      Value<DateTime> date,
+      Value<DateTime> createdAt,
+    });
+
+class $$AccountAdjustmentsTableFilterComposer
+    extends Composer<_$AppDatabase, $AccountAdjustmentsTable> {
+  $$AccountAdjustmentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountPaisa => $composableBuilder(
+    column: $table.amountPaisa,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AccountAdjustmentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AccountAdjustmentsTable> {
+  $$AccountAdjustmentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountPaisa => $composableBuilder(
+    column: $table.amountPaisa,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AccountAdjustmentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AccountAdjustmentsTable> {
+  $$AccountAdjustmentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<int> get amountPaisa => $composableBuilder(
+    column: $table.amountPaisa,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$AccountAdjustmentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AccountAdjustmentsTable,
+          AccountAdjustment,
+          $$AccountAdjustmentsTableFilterComposer,
+          $$AccountAdjustmentsTableOrderingComposer,
+          $$AccountAdjustmentsTableAnnotationComposer,
+          $$AccountAdjustmentsTableCreateCompanionBuilder,
+          $$AccountAdjustmentsTableUpdateCompanionBuilder,
+          (
+            AccountAdjustment,
+            BaseReferences<
+              _$AppDatabase,
+              $AccountAdjustmentsTable,
+              AccountAdjustment
+            >,
+          ),
+          AccountAdjustment,
+          PrefetchHooks Function()
+        > {
+  $$AccountAdjustmentsTableTableManager(
+    _$AppDatabase db,
+    $AccountAdjustmentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AccountAdjustmentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AccountAdjustmentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AccountAdjustmentsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> accountId = const Value.absent(),
+                Value<int> amountPaisa = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AccountAdjustmentsCompanion(
+                id: id,
+                accountId: accountId,
+                amountPaisa: amountPaisa,
+                reason: reason,
+                date: date,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int accountId,
+                required int amountPaisa,
+                required String reason,
+                required DateTime date,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AccountAdjustmentsCompanion.insert(
+                id: id,
+                accountId: accountId,
+                amountPaisa: amountPaisa,
+                reason: reason,
+                date: date,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AccountAdjustmentsTable, AccountAdjustment>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $AccountAdjustmentsTable,
+                    AccountAdjustment
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AccountAdjustmentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AccountAdjustmentsTable,
+      AccountAdjustment,
+      $$AccountAdjustmentsTableFilterComposer,
+      $$AccountAdjustmentsTableOrderingComposer,
+      $$AccountAdjustmentsTableAnnotationComposer,
+      $$AccountAdjustmentsTableCreateCompanionBuilder,
+      $$AccountAdjustmentsTableUpdateCompanionBuilder,
+      (
+        AccountAdjustment,
+        BaseReferences<
+          _$AppDatabase,
+          $AccountAdjustmentsTable,
+          AccountAdjustment
+        >,
+      ),
+      AccountAdjustment,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6191,4 +6833,6 @@ class $AppDatabaseManager {
       $$BorrowLendsTableTableManager(_db, _db.borrowLends);
   $$BorrowLendPaymentsTableTableManager get borrowLendPayments =>
       $$BorrowLendPaymentsTableTableManager(_db, _db.borrowLendPayments);
+  $$AccountAdjustmentsTableTableManager get accountAdjustments =>
+      $$AccountAdjustmentsTableTableManager(_db, _db.accountAdjustments);
 }
