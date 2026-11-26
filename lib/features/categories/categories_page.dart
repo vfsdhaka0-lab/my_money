@@ -93,6 +93,190 @@ class _CategoriesPageState extends State<CategoriesPage>
     return '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
   }
 
+  // CONFIRM CATEGORY DELETION
+  Future<void> _confirmDeleteCategory(dynamic category) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.delete_outline,
+            color: Colors.red,
+            size: 32,
+          ),
+          title: const Text('Delete category?'),
+          content: Text(
+            'Are you sure you want to delete "${category.name}"?\n\n'
+            'This category will disappear from your category list. '
+            'Existing purchases, transactions, due-payment history, '
+            'and financial reports will remain unchanged.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await database.deleteCategory(category.id);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '"${category.name}" category deleted.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete category: $e'),
+        ),
+      );
+    }
+  }
+
+  // CONFIRM STORE DELETION
+  Future<void> _confirmDeleteStore(dynamic store) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.delete_outline,
+            color: Colors.red,
+            size: 32,
+          ),
+          title: const Text('Delete store?'),
+          content: Text(
+            'Are you sure you want to delete "${store.name}"?\n\n'
+            'The saved store will be removed from your Stores list. '
+            'Its saved image will also be removed.\n\n'
+            'IMPORTANT: Existing purchases, store due records, '
+            'due-payment history, and financial reports will NOT '
+            'be deleted.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final imagePath = await database.deleteStore(store.id);
+
+      if (!mounted) return;
+
+      // Remove the image only if it is inside this app's
+      // store_images directory and no other saved store uses it.
+      bool imageRemoved = true;
+
+      if (imagePath != null && imagePath.trim().isNotEmpty) {
+        try {
+          final appDirectory =
+              await getApplicationDocumentsDirectory();
+
+          final imageDirectory = p.normalize(
+            p.absolute(
+              p.join(appDirectory.path, 'store_images'),
+            ),
+          );
+
+          final savedImagePath = p.normalize(
+            p.absolute(imagePath),
+          );
+
+          final isInsideStoreImageDirectory = p.isWithin(
+            imageDirectory,
+            savedImagePath,
+          );
+
+          if (isInsideStoreImageDirectory) {
+            final remainingStores =
+                await database.watchStores().first;
+
+            final imageStillUsed = remainingStores.any(
+              (item) => item.imagePath == imagePath,
+            );
+
+            if (!imageStillUsed) {
+              final imageFile = File(savedImagePath);
+
+              if (await imageFile.exists()) {
+                await imageFile.delete();
+              }
+            }
+          }
+        } catch (_) {
+          // Store deletion has already succeeded.
+          // An image cleanup problem must not affect
+          // the existing financial records.
+          imageRemoved = false;
+        }
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            imageRemoved
+                ? '"${store.name}" store deleted. Purchase and payment history preserved.'
+                : '"${store.name}" store deleted, but its image could not be removed.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete store: $e'),
+        ),
+      );
+    }
+  }
+
   void _showAddCategoryDialog(String type) {
     final nameController = TextEditingController();
 
@@ -518,45 +702,51 @@ class _CategoriesPageState extends State<CategoriesPage>
             final category = categories[index];
             final color = _getColor(category.color);
 
-            return Container(
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: color.withOpacity(0.18),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.18),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _getIcon(category.icon),
-                      color: color,
-                      size: 25,
-                    ),
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPress: () {
+                _confirmDeleteCategory(category);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: color.withOpacity(0.18),
                   ),
-                  const SizedBox(height: 9),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: Text(
-                      category.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _getIcon(category.icon),
+                        color: color,
+                        size: 25,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 9),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: Text(
+                        category.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -620,63 +810,71 @@ class _CategoriesPageState extends State<CategoriesPage>
           itemBuilder: (context, index) {
             final store = stores[index];
 
-            return Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Theme.of(context).dividerColor.withOpacity(0.4),
-                ),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: store.imagePath != null &&
-                              store.imagePath!.isNotEmpty
-                          ? Image.file(
-                              File(store.imagePath!),
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _storeImagePlaceholder();
-                              },
-                            )
-                          : _storeImagePlaceholder(),
-                    ),
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPress: () {
+                _confirmDeleteStore(store);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Theme.of(context)
+                        .dividerColor
+                        .withOpacity(0.4),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Column(
-                      children: [
-                        Text(
-                          store.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        if (store.note != null &&
-                            store.note!.isNotEmpty) ...[
-                          const SizedBox(height: 3),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: store.imagePath != null &&
+                                store.imagePath!.isNotEmpty
+                            ? Image.file(
+                                File(store.imagePath!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _storeImagePlaceholder();
+                                },
+                              )
+                            : _storeImagePlaceholder(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        children: [
                           Text(
-                            store.note!,
+                            store.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 11,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
                             ),
                           ),
+                          if (store.note != null &&
+                              store.note!.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              store.note!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
