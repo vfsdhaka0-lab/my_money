@@ -1,4 +1,6 @@
 
+// ignore_for_file: deprecated_member_use
+
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
@@ -150,6 +152,13 @@ class BackupRestoreService {
             updateKind: UpdateKind.delete,
           );
 
+          // Account adjustments.
+          await database.customUpdate(
+            'DELETE FROM account_adjustments',
+            updates: {database.accountAdjustments},
+            updateKind: UpdateKind.delete,
+          );
+
           // Accounts must be deleted last.
           await database.customUpdate(
             'DELETE FROM accounts',
@@ -170,6 +179,29 @@ class BackupRestoreService {
             ''',
             updates: {database.accounts},
           );
+
+          // Restore account adjustments if available.
+          // Older backups may not contain this table.
+
+          final adjustmentTable =
+              await database.customSelect(
+            '''
+            SELECT name
+            FROM backup_db.sqlite_master
+            WHERE type = 'table'
+              AND name = 'account_adjustments'
+            ''',
+          ).get();
+
+          if (adjustmentTable.isNotEmpty) {
+            await database.customInsert(
+              '''
+              INSERT INTO account_adjustments
+              SELECT * FROM backup_db.account_adjustments
+              ''',
+              updates: {database.accountAdjustments},
+            );
+          }
 
           // Categories.
           await database.customInsert(
