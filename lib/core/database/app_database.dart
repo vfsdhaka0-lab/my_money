@@ -37,7 +37,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   // DATABASE MIGRATION
   @override
@@ -76,6 +76,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 6) {
             await m.createTable(borrowLends);
             await m.createTable(borrowLendPayments);
+          }
+          if (from < 7) {
+            await m.createTable(accountAdjustments);
           }
         },
       );
