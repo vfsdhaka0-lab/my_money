@@ -30,6 +30,7 @@ part 'app_database.g.dart';
     Transfers,
     BorrowLends,
     BorrowLendPayments,
+    AccountAdjustments,
   ],
 )
 class AppDatabase extends _$AppDatabase {
