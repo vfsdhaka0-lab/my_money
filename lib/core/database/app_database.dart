@@ -15,6 +15,7 @@ import 'tables/stores.dart';
 import 'tables/transfers.dart';
 import 'tables/borrow_lends.dart';
 import 'tables/borrow_lend_payments.dart';
+import 'tables/account_adjustments.dart';
 
 part 'app_database.g.dart';
 
