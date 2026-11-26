@@ -301,6 +301,20 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  // SOFT DELETE CATEGORY — PRESERVE FINANCIAL HISTORY
+  //
+  // The category is marked inactive instead of being permanently
+  // deleted. Existing transactions keep their category reference.
+  Future<void> deleteCategory(int categoryId) async {
+    await (update(categories)
+          ..where((c) => c.id.equals(categoryId)))
+        .write(
+      const CategoriesCompanion(
+        isActive: Value(false),
+      ),
+    );
+  }
+
   // STORES
   Stream<List<Store>> watchStores() {
     return (select(stores)
@@ -326,6 +340,31 @@ class AppDatabase extends _$AppDatabase {
         note: Value(note),
       ),
     );
+  }
+
+  // DELETE STORE — PRESERVE PURCHASE AND DUE HISTORY
+  //
+  // The store entry is deleted, but existing purchase and due
+  // records are not modified.
+  //
+  // Returns the image path so the page can delete the image file
+  // separately after successful deletion.
+  Future<String?> deleteStore(int storeId) async {
+    return transaction(() async {
+      final store = await (select(stores)
+            ..where((s) => s.id.equals(storeId)))
+          .getSingleOrNull();
+
+      if (store == null) {
+        return null;
+      }
+
+      await (delete(stores)
+            ..where((s) => s.id.equals(storeId)))
+          .go();
+
+      return store.imagePath;
+    });
   }
 
   // TRANSACTIONS
