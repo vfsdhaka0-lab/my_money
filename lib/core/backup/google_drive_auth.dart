@@ -25,8 +25,7 @@ class GoogleDriveAuth {
     if (_initialized) return;
 
     await _googleSignIn.initialize(
-      serverClientId:
-          '638051983034-j3u7p36qtrdcfgfpc77i286v94j2mkjs.apps.googleusercontent.com',
+      serverClientId: BackupConfig.googleWebClientId,
     );
 
     _initialized = true;
@@ -45,8 +44,6 @@ class GoogleDriveAuth {
     return _currentUser;
   }
 
-  // Always start interactive Google Sign-In.
-  // Do not automatically reuse the previously selected account.
   Future<GoogleSignInAccount> signIn() async {
     await initialize();
 
@@ -91,16 +88,24 @@ class GoogleDriveAuth {
   }) async {
     await initialize();
 
-    var account = await tryRestoreSignIn();
+    GoogleSignInAccount? account;
 
-    if (account == null) {
-      if (!allowInteraction) {
+    if (allowInteraction) {
+      account = await tryRestoreSignIn();
+
+      if (account == null) {
+        account = await signIn();
+      }
+    } else {
+      // Never open the Google account chooser during automatic backup.
+      account = _currentUser;
+
+      if (account == null) {
         throw StateError(
-          'Google sign-in is required for automatic backup.',
+          'Google Drive is not connected. '
+          'Open Backup & Restore and press Backup Now.',
         );
       }
-
-      account = await signIn();
     }
 
     final scopes = [BackupConfig.driveScope];
@@ -112,7 +117,8 @@ class GoogleDriveAuth {
     if (authorization == null) {
       if (!allowInteraction) {
         throw StateError(
-          'Google Drive permission is required.',
+          'Google Drive permission is required. '
+          'Please reconnect using Backup Now.',
         );
       }
 
