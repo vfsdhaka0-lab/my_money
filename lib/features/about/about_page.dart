@@ -39,8 +39,8 @@ class AboutPage extends StatelessWidget {
 
             Image.asset(
               'assets/mymoney_logo.png',
-              width: 250,
-              height: 230,
+              width: 310,
+              height: 290,
               fit: BoxFit.contain,
             ),
 
