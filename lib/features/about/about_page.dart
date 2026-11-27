@@ -1,12 +1,17 @@
-
- // ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
   static const Color primary = Color(0xFF4FA38D);
+
+  Future<String> _getAppVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    return info.version;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,12 +125,19 @@ class AboutPage extends StatelessWidget {
 
             const SizedBox(height: 5),
 
-            Text(
-              'Version 1.0.0',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade500,
-              ),
+            FutureBuilder<String>(
+              future: _getAppVersion(),
+              builder: (context, snapshot) {
+                return Text(
+                  snapshot.hasData
+                      ? 'Version ${snapshot.data}'
+                      : 'Version ...',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade500,
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 8),
