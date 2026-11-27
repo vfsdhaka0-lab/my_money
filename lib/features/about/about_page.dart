@@ -38,7 +38,7 @@ class AboutPage extends StatelessWidget {
             const SizedBox(height: 15),
 
             Image.asset(
-              'assets/images/mymoney_logo.png',
+              'assets/mymoney_logo.png',
               width: 250,
               height: 230,
               fit: BoxFit.contain,
