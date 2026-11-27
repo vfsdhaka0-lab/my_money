@@ -211,6 +211,54 @@ class AppDatabase extends _$AppDatabase {
     return select(accounts).watch();
   }
 
+  // CHECK WHETHER THIS INSTALLATION ALREADY HAS DATA.
+  //
+  // Used before automatic cloud restore.
+  // If any table contains data, automatic restore must not
+  // overwrite the existing local database.
+  Future<bool> hasExistingFinancialData() async {
+    final accountsExist =
+        await (select(accounts)..limit(1)).getSingleOrNull();
+
+    final categoriesExist =
+        await (select(categories)..limit(1)).getSingleOrNull();
+
+    final transactionsExist =
+        await (select(transactions)..limit(1)).getSingleOrNull();
+
+    final duesExist =
+        await (select(dues)..limit(1)).getSingleOrNull();
+
+    final duePaymentsExist =
+        await (select(duePayments)..limit(1)).getSingleOrNull();
+
+    final storesExist =
+        await (select(stores)..limit(1)).getSingleOrNull();
+
+    final transfersExist =
+        await (select(transfers)..limit(1)).getSingleOrNull();
+
+    final borrowLendsExist =
+        await (select(borrowLends)..limit(1)).getSingleOrNull();
+
+    final borrowLendPaymentsExist =
+        await (select(borrowLendPayments)..limit(1)).getSingleOrNull();
+
+    final adjustmentsExist =
+        await (select(accountAdjustments)..limit(1)).getSingleOrNull();
+
+    return accountsExist != null ||
+        categoriesExist != null ||
+        transactionsExist != null ||
+        duesExist != null ||
+        duePaymentsExist != null ||
+        storesExist != null ||
+        transfersExist != null ||
+        borrowLendsExist != null ||
+        borrowLendPaymentsExist != null ||
+        adjustmentsExist != null;
+  }
+
   Future<int> addAccount({
     required String name,
     required int openingBalancePaisa,
