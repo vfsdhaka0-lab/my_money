@@ -210,8 +210,6 @@ class _HomePageState extends State<HomePage> {
 
               const Divider(),
 
-              // FINANCIAL SECTION - NEW ORDER
-
               ListTile(
                 leading: const Icon(Icons.analytics_outlined),
                 title: const Text('Financial Reports'),
@@ -240,6 +238,23 @@ class _HomePageState extends State<HomePage> {
                 title: const Text('My Account'),
                 selected: selectedIndex == 8,
                 onTap: () => selectPage(8),
+              ),
+
+              const Divider(),
+
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('About MyMoney'),
+                onTap: () {
+                  Navigator.pop(context);
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AboutPage(),
+                    ),
+                  );
+                },
               ),
             ],
           ),
