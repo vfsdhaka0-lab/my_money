@@ -45,14 +45,10 @@ class GoogleDriveAuth {
     return _currentUser;
   }
 
+  // Always start interactive Google Sign-In.
+  // Do not automatically reuse the previously selected account.
   Future<GoogleSignInAccount> signIn() async {
     await initialize();
-
-    final existingAccount = await tryRestoreSignIn();
-
-    if (existingAccount != null) {
-      return existingAccount;
-    }
 
     final account = await _googleSignIn.authenticate();
 
