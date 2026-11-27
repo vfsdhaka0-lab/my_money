@@ -35,34 +35,16 @@ class AboutPage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
 
-            Container(
-              height: 105,
-              width: 105,
-              decoration: BoxDecoration(
-                color: primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: const Icon(
-                Icons.account_balance_wallet_rounded,
-                size: 58,
-                color: primary,
-              ),
+            Image.asset(
+              'assets/images/mymoney_logo.png',
+              width: 250,
+              height: 230,
+              fit: BoxFit.contain,
             ),
 
-            const SizedBox(height: 18),
-
-            const Text(
-              'MyMoney',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: primary,
-              ),
-            ),
-
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
             Text(
               'Your Personal Finance Manager',
