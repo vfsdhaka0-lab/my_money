@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate MyMoney launcher icons
+        run: dart run flutter_launcher_icons
+
       - name: Configure Android signing
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
