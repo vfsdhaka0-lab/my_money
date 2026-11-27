@@ -14,6 +14,7 @@ import '../features/borrow_lend/borrow_lend_page.dart';
 import '../features/backup/backup_page.dart';
 import '../features/reports/reports_page.dart';
 import '../features/calendar/financial_calendar_page.dart';
+import '../features/about/about_page.dart';
 import 'theme.dart';
 
 class MyMoneyApp extends StatelessWidget {
