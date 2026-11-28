@@ -107,6 +107,17 @@ class AutomaticBackupService {
     await _recordBackupSuccess();
   }
 
+  Future<void> enableAutomaticBackup() async {
+    final file =
+        await _getFile('automatic_backup_enabled.txt');
+
+    await file.writeAsString('enabled');
+
+    _isReady = true;
+
+    _scheduleBackup();
+  }
+
   void _scheduleBackup() {
     if (!_isReady) return;
 
