@@ -2,6 +2,7 @@
 import 'dart:io';
 
 import 'package:googleapis/drive/v3.dart' as drive;
+import 'package:googleapis_auth/googleapis_auth.dart' show AuthClient;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -86,8 +87,8 @@ class GoogleDriveService {
   }
 
   Future<File?> downloadBackupForAutomaticRestore() async {
-    final client =
-        await GoogleDriveAuth.instance.getClientForAutomaticRestore();
+    final client = await GoogleDriveAuth.instance
+        .getClientForAutomaticRestore();
 
     try {
       return await _downloadBackupWithClient(client);
@@ -97,7 +98,7 @@ class GoogleDriveService {
   }
 
   Future<File?> _downloadBackupWithClient(
-    drive.DriveApiClient client,
+    AuthClient client,
   ) async {
     final driveApi = drive.DriveApi(client);
 
