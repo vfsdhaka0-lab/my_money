@@ -79,46 +79,63 @@ class GoogleDriveService {
         await GoogleDriveAuth.instance.getAuthenticatedClient();
 
     try {
-      final driveApi = drive.DriveApi(client);
-
-      final existingFiles = await driveApi.files.list(
-        spaces: 'appDataFolder',
-        q: "name = '$backupFileName' and trashed = false",
-        pageSize: 10,
-        $fields: 'files(id,name,modifiedTime)',
-      );
-
-      if (existingFiles.files == null ||
-          existingFiles.files!.isEmpty) {
-        return null;
-      }
-
-      final fileId = existingFiles.files!.first.id;
-
-      if (fileId == null) {
-        throw Exception('Backup file ID not found.');
-      }
-
-      final response = await driveApi.files.get(
-        fileId,
-        downloadOptions: drive.DownloadOptions.fullMedia,
-      );
-
-      if (response is! drive.Media) {
-        throw Exception('Invalid backup download response.');
-      }
-
-      final directory = await getTemporaryDirectory();
-
-      final backupFile = File(
-        p.join(directory.path, 'mymoney_backup_download.zip'),
-      );
-
-      await response.stream.pipe(backupFile.openWrite());
-
-      return backupFile;
+      return await _downloadBackupWithClient(client);
     } finally {
       client.close();
     }
+  }
+
+  Future<File?> downloadBackupForAutomaticRestore() async {
+    final client =
+        await GoogleDriveAuth.instance.getClientForAutomaticRestore();
+
+    try {
+      return await _downloadBackupWithClient(client);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<File?> _downloadBackupWithClient(
+    drive.DriveApiClient client,
+  ) async {
+    final driveApi = drive.DriveApi(client);
+
+    final existingFiles = await driveApi.files.list(
+      spaces: 'appDataFolder',
+      q: "name = '$backupFileName' and trashed = false",
+      pageSize: 10,
+      $fields: 'files(id,name,modifiedTime)',
+    );
+
+    if (existingFiles.files == null ||
+        existingFiles.files!.isEmpty) {
+      return null;
+    }
+
+    final fileId = existingFiles.files!.first.id;
+
+    if (fileId == null) {
+      throw Exception('Backup file ID not found.');
+    }
+
+    final response = await driveApi.files.get(
+      fileId,
+      downloadOptions: drive.DownloadOptions.fullMedia,
+    );
+
+    if (response is! drive.Media) {
+      throw Exception('Invalid backup download response.');
+    }
+
+    final directory = await getTemporaryDirectory();
+
+    final backupFile = File(
+      p.join(directory.path, 'mymoney_backup_download.zip'),
+    );
+
+    await response.stream.pipe(backupFile.openWrite());
+
+    return backupFile;
   }
 }
