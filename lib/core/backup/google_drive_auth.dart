@@ -128,6 +128,12 @@ class GoogleDriveAuth {
     return authorization.authClient(scopes: scopes);
   }
 
+  Future<void> signOut() async {
+    await _googleSignIn.signOut();
+
+    _currentUser = null;
+  }
+
   Future<AuthClient> getClientForAutomaticRestore() async {
     await initialize();
 
@@ -162,20 +168,11 @@ class GoogleDriveAuth {
         await account.authorizationClient
             .authorizationForScopes(scopes);
 
-    if (authorization == null) {
-      // The user may be asked to grant Drive permission.
-      // This does not start a new Google account selection.
-      authorization =
-          await account.authorizationClient
-              .authorizeScopes(scopes);
-    }
+    // Request Drive permission if it has not been granted.
+    // This does not start a new Google account selection.
+    authorization ??= await account.authorizationClient
+        .authorizeScopes(scopes);
 
     return authorization.authClient(scopes: scopes);
-  }
-
-  Future<void> signOut() async {
-    await _googleSignIn.signOut();
-
-    _currentUser = null;
   }
 }
