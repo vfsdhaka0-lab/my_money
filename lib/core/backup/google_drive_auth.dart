@@ -95,12 +95,13 @@ class GoogleDriveAuth {
 
       account ??= await signIn();
     } else {
-      // Automatic backup must never open the account chooser.
-      account = _currentUser;
+      // Try restoring the account silently after an app restart.
+      // Never open the account chooser during automatic backup.
+      account = _currentUser ?? await tryRestoreSignIn();
 
       if (account == null) {
         throw StateError(
-          'Google Drive is not connected. '
+          'Google Drive account could not be restored silently. '
           'Open Backup & Restore and press Backup Now.',
         );
       }
@@ -137,8 +138,6 @@ class GoogleDriveAuth {
   Future<AuthClient> getClientForAutomaticRestore() async {
     await initialize();
 
-    // Reuse the currently signed-in Google account.
-    // If necessary, try silent authentication.
     final account = await tryRestoreSignIn();
 
     if (account == null) {
@@ -147,7 +146,6 @@ class GoogleDriveAuth {
       );
     }
 
-    // Ensure Google Drive belongs to the same account as MyMoney.
     final firebaseEmail =
         _firebaseAuth.currentUser?.email?.trim().toLowerCase();
 
@@ -168,8 +166,6 @@ class GoogleDriveAuth {
         await account.authorizationClient
             .authorizationForScopes(scopes);
 
-    // Request Drive permission if it has not been granted.
-    // This does not start a new Google account selection.
     authorization ??= await account.authorizationClient
         .authorizeScopes(scopes);
 
