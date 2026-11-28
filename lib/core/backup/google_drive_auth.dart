@@ -93,11 +93,9 @@ class GoogleDriveAuth {
     if (allowInteraction) {
       account = await tryRestoreSignIn();
 
-      if (account == null) {
-        account = await signIn();
-      }
+      account ??= await signIn();
     } else {
-      // Never open the Google account chooser during automatic backup.
+      // Automatic backup must never open the account chooser.
       account = _currentUser;
 
       if (account == null) {
