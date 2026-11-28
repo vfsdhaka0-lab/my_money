@@ -128,6 +128,51 @@ class GoogleDriveAuth {
     return authorization.authClient(scopes: scopes);
   }
 
+  Future<AuthClient> getClientForAutomaticRestore() async {
+    await initialize();
+
+    // Reuse the currently signed-in Google account.
+    // If necessary, try silent authentication.
+    final account = await tryRestoreSignIn();
+
+    if (account == null) {
+      throw StateError(
+        'Google sign-in is required before automatic restore.',
+      );
+    }
+
+    // Ensure Google Drive belongs to the same account as MyMoney.
+    final firebaseEmail =
+        _firebaseAuth.currentUser?.email?.trim().toLowerCase();
+
+    final googleEmail = account.email.trim().toLowerCase();
+
+    if (firebaseEmail == null ||
+        firebaseEmail.isEmpty ||
+        firebaseEmail != googleEmail) {
+      throw StateError(
+        'The Google Drive account does not match '
+        'the MyMoney account.',
+      );
+    }
+
+    final scopes = [BackupConfig.driveScope];
+
+    var authorization =
+        await account.authorizationClient
+            .authorizationForScopes(scopes);
+
+    if (authorization == null) {
+      // The user may be asked to grant Drive permission.
+      // This does not start a new Google account selection.
+      authorization =
+          await account.authorizationClient
+              .authorizeScopes(scopes);
+    }
+
+    return authorization.authClient(scopes: scopes);
+  }
+
   Future<void> signOut() async {
     await _googleSignIn.signOut();
 
