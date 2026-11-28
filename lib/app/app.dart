@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/backup/google_drive_auth.dart';
+import '../core/backup/backup_restore_service.dart';
 import '../features/auth/login_page.dart';
 import '../features/accounts/accounts_page.dart';
 import '../features/transactions/transactions_page.dart';
@@ -48,12 +49,91 @@ class AuthGate extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
-          return const HomePage();
+          return const StartupRecoveryGate();
         }
 
         return const LoginPage();
       },
     );
+  }
+}
+
+/// Checks for a cloud backup before opening the home screen.
+///
+/// Existing local financial data is never overwritten.
+class StartupRecoveryGate extends StatefulWidget {
+  const StartupRecoveryGate({super.key});
+
+  @override
+  State<StartupRecoveryGate> createState() =>
+      _StartupRecoveryGateState();
+}
+
+class _StartupRecoveryGateState
+    extends State<StartupRecoveryGate> {
+  bool _isChecking = true;
+
+  String? _message;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkForBackup();
+  }
+
+  Future<void> _checkForBackup() async {
+    try {
+      final restored = await BackupRestoreService.instance
+          .restoreFromGoogleDriveIfLocalDatabaseEmpty();
+
+      if (restored) {
+        _message = 'Your Google Drive backup was restored.';
+      }
+    } catch (error) {
+      _message = 'Automatic restore could not complete: $error';
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _isChecking = false;
+    });
+
+    if (_message != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_message!),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isChecking) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 18),
+              Text(
+                'Checking your MyMoney backup...',
+                style: TextStyle(fontSize: 15),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return const HomePage();
   }
 }
 
