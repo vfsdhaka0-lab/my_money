@@ -88,38 +88,35 @@ class GoogleDriveAuth {
   }) async {
     await initialize();
 
-    GoogleSignInAccount? account;
+    final scopes = [BackupConfig.driveScope];
 
-    if (allowInteraction) {
-      account = await tryRestoreSignIn();
+    if (!allowInteraction) {
+      // Request an existing Drive authorization without
+      // restoring GoogleSignInAccount or opening account UI.
+      final authorization = await _googleSignIn
+          .authorizationClient
+          .authorizationForScopes(scopes);
 
-      account ??= await signIn();
-    } else {
-      // Never open Google sign-in UI during automatic backup.
-      account = _currentUser;
-
-      if (account == null) {
+      if (authorization == null) {
         throw StateError(
-          'Google Drive is not connected. '
-          'Open Backup & Restore and press Backup Now.',
+          'Google Drive authorization is not available. '
+          'Please open Backup & Restore and press Backup Now.',
         );
       }
+
+      return authorization.authClient(scopes: scopes);
     }
 
-    final scopes = [BackupConfig.driveScope];
+    GoogleSignInAccount? account =
+        await tryRestoreSignIn();
+
+    account ??= await signIn();
 
     var authorization =
         await account.authorizationClient
             .authorizationForScopes(scopes);
 
     if (authorization == null) {
-      if (!allowInteraction) {
-        throw StateError(
-          'Google Drive permission is required. '
-          'Please reconnect using Backup Now.',
-        );
-      }
-
       authorization =
           await account.authorizationClient
               .authorizeScopes(scopes);
