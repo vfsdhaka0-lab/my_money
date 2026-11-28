@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/backup/google_drive_auth.dart';
 import '../core/backup/backup_restore_service.dart';
+import '../core/backup/automatic_backup_service.dart';
+import '../shared/database_instance.dart';
 import '../features/auth/login_page.dart';
 import '../features/accounts/accounts_page.dart';
 import '../features/transactions/transactions_page.dart';
@@ -61,6 +63,7 @@ class AuthGate extends StatelessWidget {
 /// Checks for a cloud backup before opening the home screen.
 ///
 /// Existing local financial data is never overwritten.
+/// Automatic backup is enabled when financial data exists.
 class StartupRecoveryGate extends StatefulWidget {
   const StartupRecoveryGate({super.key});
 
@@ -89,8 +92,19 @@ class _StartupRecoveryGateState
       if (restored) {
         _message = 'Your Google Drive backup was restored.';
       }
+
+      // Check whether financial data is available locally.
+      final hasExistingData =
+          await database.hasExistingFinancialData();
+
+      // Automatically enable backup for an account that
+      // already has financial data, including restored data.
+      if (hasExistingData) {
+        await AutomaticBackupService.instance
+            .enableAutomaticBackup();
+      }
     } catch (error) {
-      _message = 'Automatic restore could not complete: $error';
+      _message = 'Automatic backup/restore could not complete: $error';
     }
 
     if (!mounted) return;
