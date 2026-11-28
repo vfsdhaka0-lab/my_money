@@ -1,5 +1,5 @@
 
- // ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'dart:io';
 
@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../shared/database_instance.dart';
+import 'automatic_backup_service.dart';
 import 'google_drive_service.dart';
 
 class BackupRestoreService {
@@ -40,6 +41,10 @@ class BackupRestoreService {
     }
 
     await _restoreFromBackupFile(backupFile);
+
+    // Enable automatic backup after successful restore.
+    await AutomaticBackupService.instance
+        .enableAutomaticBackup();
 
     return true;
   }
