@@ -91,8 +91,8 @@ class GoogleDriveAuth {
     final scopes = [BackupConfig.driveScope];
 
     if (!allowInteraction) {
-      // Request an existing Drive authorization without
-      // restoring GoogleSignInAccount or opening account UI.
+      // Use existing Drive authorization without opening
+      // Google account selection during automatic backup.
       final authorization = await _googleSignIn
           .authorizationClient
           .authorizationForScopes(scopes);
@@ -116,11 +116,8 @@ class GoogleDriveAuth {
         await account.authorizationClient
             .authorizationForScopes(scopes);
 
-    if (authorization == null) {
-      authorization =
-          await account.authorizationClient
-              .authorizeScopes(scopes);
-    }
+    authorization ??= await account.authorizationClient
+        .authorizeScopes(scopes);
 
     return authorization.authClient(scopes: scopes);
   }
