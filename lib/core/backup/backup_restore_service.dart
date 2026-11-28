@@ -1,5 +1,5 @@
 
-// ignore_for_file: deprecated_member_use
+ // ignore_for_file: deprecated_member_use
 
 import 'dart:io';
 
@@ -17,6 +17,35 @@ class BackupRestoreService {
   static final BackupRestoreService instance =
       BackupRestoreService._();
 
+  /// Automatically restores from Google Drive only
+  /// when the local database contains no financial data.
+  ///
+  /// Returns true if a backup was restored.
+  /// Returns false if local data already exists or
+  /// no cloud backup is available.
+  Future<bool> restoreFromGoogleDriveIfLocalDatabaseEmpty() async {
+    final hasExistingData =
+        await database.hasExistingFinancialData();
+
+    // Never overwrite existing local financial data.
+    if (hasExistingData) {
+      return false;
+    }
+
+    final backupFile = await GoogleDriveService.instance
+        .downloadBackupForAutomaticRestore();
+
+    if (backupFile == null) {
+      return false;
+    }
+
+    await _restoreFromBackupFile(backupFile);
+
+    return true;
+  }
+
+  /// Manual restore. This intentionally retains the
+  /// existing behavior of replacing local database data.
   Future<void> restoreFromGoogleDrive() async {
     final backupFile =
         await GoogleDriveService.instance.downloadBackup();
@@ -25,6 +54,12 @@ class BackupRestoreService {
       throw Exception('No backup found in Google Drive.');
     }
 
+    await _restoreFromBackupFile(backupFile);
+  }
+
+  Future<void> _restoreFromBackupFile(
+    File backupFile,
+  ) async {
     final temporaryDirectory =
         await getTemporaryDirectory();
 
@@ -96,70 +131,60 @@ class BackupRestoreService {
           // Child records must be deleted first.
           // =====================================
 
-          // Borrow & Lend repayment history.
           await database.customUpdate(
             'DELETE FROM borrow_lend_payments',
             updates: {database.borrowLendPayments},
             updateKind: UpdateKind.delete,
           );
 
-          // Borrow & Lend records.
           await database.customUpdate(
             'DELETE FROM borrow_lends',
             updates: {database.borrowLends},
             updateKind: UpdateKind.delete,
           );
 
-          // Transfer history.
           await database.customUpdate(
             'DELETE FROM transfers',
             updates: {database.transfers},
             updateKind: UpdateKind.delete,
           );
 
-          // Store due payment history.
           await database.customUpdate(
             'DELETE FROM due_payments',
             updates: {database.duePayments},
             updateKind: UpdateKind.delete,
           );
 
-          // Store dues.
           await database.customUpdate(
             'DELETE FROM dues',
             updates: {database.dues},
             updateKind: UpdateKind.delete,
           );
 
-          // Transactions.
           await database.customUpdate(
             'DELETE FROM transactions',
             updates: {database.transactions},
             updateKind: UpdateKind.delete,
           );
 
-          // Categories.
           await database.customUpdate(
             'DELETE FROM categories',
             updates: {database.categories},
             updateKind: UpdateKind.delete,
           );
 
-          // Stores.
           await database.customUpdate(
             'DELETE FROM stores',
             updates: {database.stores},
             updateKind: UpdateKind.delete,
           );
 
-          // Account adjustments.
           await database.customUpdate(
             'DELETE FROM account_adjustments',
             updates: {database.accountAdjustments},
             updateKind: UpdateKind.delete,
           );
 
-          // Accounts must be deleted last.
           await database.customUpdate(
             'DELETE FROM accounts',
             updates: {database.accounts},
@@ -171,7 +196,6 @@ class BackupRestoreService {
           // Parent records must be restored first.
           // =====================================
 
-          // Accounts.
           await database.customInsert(
             '''
             INSERT INTO accounts
@@ -180,9 +204,7 @@ class BackupRestoreService {
             updates: {database.accounts},
           );
 
-          // Restore account adjustments if available.
           // Older backups may not contain this table.
-
           final adjustmentTable =
               await database.customSelect(
             '''
@@ -203,7 +225,6 @@ class BackupRestoreService {
             );
           }
 
-          // Categories.
           await database.customInsert(
             '''
             INSERT INTO categories
@@ -212,7 +233,6 @@ class BackupRestoreService {
             updates: {database.categories},
           );
 
-          // Stores.
           await database.customInsert(
             '''
             INSERT INTO stores
@@ -221,7 +241,6 @@ class BackupRestoreService {
             updates: {database.stores},
           );
 
-          // Transactions.
           await database.customInsert(
             '''
             INSERT INTO transactions
@@ -230,7 +249,6 @@ class BackupRestoreService {
             updates: {database.transactions},
           );
 
-          // Store dues.
           await database.customInsert(
             '''
             INSERT INTO dues
@@ -239,7 +257,6 @@ class BackupRestoreService {
             updates: {database.dues},
           );
 
-          // Store due payment history.
           await database.customInsert(
             '''
             INSERT INTO due_payments
@@ -247,10 +264,6 @@ class BackupRestoreService {
             ''',
             updates: {database.duePayments},
           );
-
-          // =====================================
-          // RESTORE TRANSFER HISTORY
-          // =====================================
 
           await database.customInsert(
             '''
@@ -260,10 +273,6 @@ class BackupRestoreService {
             updates: {database.transfers},
           );
 
-          // =====================================
-          // RESTORE BORROW & LEND RECORDS
-          // =====================================
-
           await database.customInsert(
             '''
             INSERT INTO borrow_lends
@@ -272,8 +281,6 @@ class BackupRestoreService {
             updates: {database.borrowLends},
           );
 
-          // Restore repayment history after
-          // restoring the original records.
           await database.customInsert(
             '''
             INSERT INTO borrow_lend_payments
