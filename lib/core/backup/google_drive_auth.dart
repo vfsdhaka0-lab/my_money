@@ -95,13 +95,12 @@ class GoogleDriveAuth {
 
       account ??= await signIn();
     } else {
-      // Try restoring the account silently after an app restart.
-      // Never open the account chooser during automatic backup.
-      account = _currentUser ?? await tryRestoreSignIn();
+      // Never open Google sign-in UI during automatic backup.
+      account = _currentUser;
 
       if (account == null) {
         throw StateError(
-          'Google Drive account could not be restored silently. '
+          'Google Drive is not connected. '
           'Open Backup & Restore and press Backup Now.',
         );
       }
